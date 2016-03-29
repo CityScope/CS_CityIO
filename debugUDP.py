@@ -37,6 +37,7 @@ def client_emulator(ip, port, server):
                 sock.sendall(message)
                 print("[TCP.TEmu] Table has sent some data")
                 response = sock.recv(1024)
+                print("[TCP.TEmu DEBUG]", message)
                 print("[TCP.TEmu] Received by table: {}".format(response))
                 last_data = data
             time.sleep(0.2)
@@ -74,9 +75,8 @@ class MyUDPServer(socketserver.UDPServer):
         self.data = ""
 
     def start_tcp(self, ip, port):
-        print("Starting TCP client...")
+        print("[TCP.TEmu] Starting TCP client...")
         server_thread = threading.Thread(target=lambda: client_emulator(ip, port, self))
-
         server_thread.daemon = True
         server_thread.start()
 

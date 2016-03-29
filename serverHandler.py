@@ -4,14 +4,16 @@ import socketserver
 
 from binaryUtils import *
 
+# The beginning of the string for any handshake
 SALT = bytes("CIOMIT", 'ascii')
 SALT_LEN = len(SALT)
 
 
+# The base class for all the tables and viewers
 class Client:
     def __init__(self, sock):
         self.socket = sock  # type: ThreadedTCPRequestHandler
-        self.opcode_to_function = {}
+        self.opcode_to_function = {} # type: dict[int, function]
 
     def handle_opcode(self, data):
         opcode, n_data = readbyte(data)
@@ -24,7 +26,7 @@ class Client:
     def on_disconnect(self):
         pass
 
-
+# Base class for a generic table
 class Table(Client):
     opcode = 1
 
@@ -72,7 +74,7 @@ class Table(Client):
             return data
 
 
-
+# Base class for a generic viewer
 class Viewer(Client):
     opcode = 2
 
@@ -88,11 +90,11 @@ class Viewer(Client):
         return package
 
 
-
-
+# Table for converting opcode to a client type
 TYPE_BYTECODE = {Table.opcode: Table, Viewer.opcode: Viewer}
 
 
+# Class for handling incoming connections
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     def finish(self):
         print("[TCP.Server] Client {} Disconnected".format(self.client_address))
@@ -122,7 +124,6 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             if client is Client:
                 client.on_disconnect()
 
-
     def handle_first_input(self, data):
         salt, data = readbytes(data, SALT_LEN)
         if salt != SALT:
@@ -149,7 +150,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
         return result
 
-
+# Class for the TCP server
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     def __init__(self, ip_port):
         self.tables = {}
