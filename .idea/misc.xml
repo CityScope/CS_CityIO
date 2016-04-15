@@ -11,11 +11,4 @@
     <ConfirmationsSetting value="0" id="Remove" />
   </component>
   <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.5.1 (C:\Users\asdfg_000\AppData\Local\Programs\Python\Python35\python.exe)" project-jdk-type="Python SDK" />
-  <component name="PyConsoleOptionsProvider">
-    <option name="myPythonConsoleState">
-      <console-settings sdk-home="C:\Users\asdfg_000\AppData\Local\Programs\Python\Python35\python.exe">
-        <option name="mySdkHome" value="C:\Users\asdfg_000\AppData\Local\Programs\Python\Python35\python.exe" />
-      </console-settings>
-    </option>
-  </component>
 </project>

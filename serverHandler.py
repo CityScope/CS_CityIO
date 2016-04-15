@@ -1,97 +1,13 @@
 import socket
 import threading
 import socketserver
+import clients
 
 from binaryUtils import *
 
 # The beginning of the string for any handshake
 SALT = bytes("CIOMIT", 'ascii')
 SALT_LEN = len(SALT)
-
-
-# The base class for all the tables and viewers
-class Client:
-    def __init__(self, sock):
-        self.socket = sock  # type: ThreadedTCPRequestHandler
-        self.opcode_to_function = {} # type: dict[int, function]
-
-    def handle_opcode(self, data):
-        opcode, n_data = readbyte(data)
-        result = b"ER"
-        if opcode in self.opcode_to_function:
-            result = self.opcode_to_function[opcode](n_data)
-        result = int_to_bytes(data[0], 1) + result
-        return result
-
-    def on_disconnect(self):
-        pass
-
-# Base class for a generic table
-class Table(Client):
-    opcode = 1
-
-    def __init__(self, sock, table_id):
-        super().__init__(sock)
-        self.id = table_id
-        self.lock = threading.Lock()
-        self.viewers = set()
-        self.objects = {}   # type: dict[int, bytes]
-        self.updates = {}
-        self.last_delta = 0
-        self.last_full_update = 0
-        self.opcode_to_function = {1: self.initialize_data, 2: self.update_data}
-
-    def initialize_data(self, data):
-        n_objects, data = readint(data, 2)
-        for i in range(n_objects):
-            id, obj, data = readobject(data)
-            self.objects[id] = obj
-
-        self.last_delta += 1
-        self.last_full_update = self.last_delta
-        return b"OK"
-
-    def update_data(self, data):
-        pass
-
-    def add_viewer(self, viewer):
-        self.viewers.add(viewer)
-
-    def remove_viewer(self, viewer):
-        del self.viewers[viewer]
-
-    def retrieve_data(self, last_delta):
-        new_delta = self.last_delta
-
-        if last_delta >= self.last_delta:
-            return int_to_bytes(new_delta, 4) + b'\x00\x00'
-
-        with self.lock:
-            data = int_to_bytes(new_delta, 4) + int_to_bytes(len(self.objects), 2)
-            for key in self.objects:
-                obj = self.objects[key]
-                data += obj
-            return data
-
-
-# Base class for a generic viewer
-class Viewer(Client):
-    opcode = 2
-
-    def __init__(self, sock):
-        super().__init__(sock)
-        self.table = None
-        self.opcode_to_function = {1: self.get_new_data}
-
-    def get_new_data(self, data):
-        last_delta, data = readint(data)
-
-        package = self.table.retrieve_data(last_delta)
-        return package
-
-
-# Table for converting opcode to a client type
-TYPE_BYTECODE = {Table.opcode: Table, Viewer.opcode: Viewer}
 
 
 # Class for handling incoming connections
@@ -112,7 +28,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 self.request.sendall(response)
                 data = self.request.recv(4048)
                 while len(data) > 0:
-                    print("[TCP.Server] Received from {client}.".format(client=type(client)))
+                    # print("[TCP.Server] Received from {client}.".format(client=type(client)))
                     response = client.handle_opcode(data)
                     self.request.sendall(response)
                     data = self.request.recv(4048)
@@ -121,7 +37,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         except ConnectionAbortedError:
             print("[TCP.Server] Connection by {} was aborted.".format(client))
         finally:
-            if client is Client:
+            if client is clients.Client:
                 client.on_disconnect()
 
     def handle_first_input(self, data):
@@ -130,25 +46,25 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             return None
 
         type, data = readbyte(data)
-        if type not in TYPE_BYTECODE:
+        if type not in clients.TYPE_BYTECODE:
             return None
 
-        client_type = TYPE_BYTECODE[type]
+        client_type = clients.TYPE_BYTECODE[type]
 
         result = None
-        if client_type == Viewer:
+        if issubclass(client_type, clients.Viewer):
             table_id, data = readstring(data)
             #print(self.server.tables)
-            result = Viewer(self)
+            result = client_type(self)
 
             self.server.assign_to_table(result, table_id)
 
-        elif client_type == Table:
+        elif issubclass(client_type, clients.Table):
             table_id, data = readstring(data)
-            result = self.server.create_table(socket, table_id)
-
+            result = self.server.create_table(client_type, socket, table_id)
 
         return result
+
 
 # Class for the TCP server
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
@@ -157,9 +73,9 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
         self.lock = threading.Lock()
         super().__init__(ip_port, ThreadedTCPRequestHandler)
 
-    def create_table(self, sock, table_id) -> Table:
+    def create_table(self, table_type, sock, table_id) -> clients.Table:
         with self.lock:
-            table = Table(sock, table_id)
+            table = table_type(sock, table_id)
             self.tables[table.id] = table
         return table
 
