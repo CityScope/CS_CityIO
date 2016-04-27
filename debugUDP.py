@@ -6,7 +6,8 @@ import threading
 import random
 from binaryUtils import *
 
-ex_start = re.compile('^gridIndex\t(?P<gridIndex>\d+?)\n')
+# ex_start = re.compile('^gridIndex\t(?P<gridIndex>\d+?)\n')
+ex_start = re.compile('^COLORTIZER\n')
 ex_data = re.compile('((?P<id>-?\d+)\t(?P<x>-?\d+)\t(?P<y>-?\d+)\t(?P<rot>-?\d+)\n?)+?')
 SAFE_TIME_SECONDS = 15
 change_freq = 8
@@ -106,6 +107,7 @@ class MyUDPServer(socketserver.UDPServer):
                 self.data_time = time.time()
             else:
                 print("[UDP.TEmu] ERROR: Received data didn't match.")
+                print("[UDP.TEmu] DEBUG:", data)
 
     def apply_random_change(self):
         if time.time() - self.last_random_change_time > change_freq:

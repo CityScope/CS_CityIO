@@ -4,8 +4,11 @@
 import serverHandler
 import debugUDP
 
+VERSION = "4/26/2016 3:09PM"
+
 if __name__ == "__main__":
     # The host and the port for the server. Keep the host blank, so the clients can connect using the domain name.
+    print("TCP Server. Version of", VERSION)
     HOST, PORT = "", 9999
 
     # Start the UDP/TCP emulator, which connects to localhost:PORT
