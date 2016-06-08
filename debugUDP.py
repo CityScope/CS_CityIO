@@ -8,20 +8,32 @@ from binaryUtils import *
 
 # ex_start = re.compile('^gridIndex\t(?P<gridIndex>\d+?)\n')
 ex_start = re.compile('^COLORTIZER\n')
-ex_data = re.compile('((?P<id>-?\d+)\t(?P<x>-?\d+)\t(?P<y>-?\d+)\t(?P<rot>-?\d+)\n?)+?')
+ex_data = re.compile('(^(?P<id>-?\d+)\t(?P<x>-?\d+)\t(?P<y>-?\d+)\t(?P<rot>-?\d+))+?$', re.MULTILINE)
 SAFE_TIME_SECONDS = 15
 change_freq = 8
 
 
-def get_data(data, is_working):
-    ll = ex_data.findall(data)
-    data = b"\x01" + int_to_bytes(len(ll), 2)
+def get_data(text_data, is_working):
+    ll = ex_data.findall(text_data)
+    data = b"\x01" + int_to_bytes(len(ll)+2, 2)
+
     for row in ll:
         type, x, y, rot = int(row[1]), int(row[2]), int(row[3]), int(row[4])
         id = x * 16 + y
         data += int_to_bytes(id, 2) + int_to_bytes(5, 2) + int_to_bytes(x, 1) \
                 + int_to_bytes(y, 1) + int_to_bytes(type, 1) + int_to_bytes(rot, 2)
 
+    lines = text_data.split('\n')
+    density = [int(v) for v in lines[-2].split("\t")]
+    population = [int(v) for v in lines[-1].split("\t")]
+
+    data += int_to_bytes(1000, 2) + int_to_bytes(len(density), 2) + b''.join([int_to_bytes(d, 1) for d in density])
+    data += int_to_bytes(1001, 2) + int_to_bytes(len(population)*4, 2) + b''.join([int_to_bytes(p, 4) for p in population])
+    # print("[debug] density: {}", density)
+
+    print("[debug] population: {}", population)
+    print("{0} + {1} ({2} + {3})", len(ll), 2, len(density), len(population))
+    print(data)
     status_req = b'\x03' + bytes([is_working])
     return b'\x00'.join([data, status_req])
 
@@ -85,7 +97,6 @@ class MyUDPServer(socketserver.UDPServer):
         self.last_save_time = 60
         self.working = True
 
-
     def start_tcp(self, ip, port):
         server_thread = threading.Thread(target=lambda: client_emulator(ip, port, self))
         server_thread.daemon = True
@@ -123,11 +134,11 @@ class MyUDPServer(socketserver.UDPServer):
             components = r[0].split('\t')
             type = int(components[0])
             old_type = type
-            while True:
-                type = -1 if type != -1 else random.randint(1, 15)
+            #while True:
+            type = random.randint(-1, 0)
                 # 6 is not allowed
-                if type != 6:
-                    break
+                # if type != 6:
+                #    break
             n_s = '\t'.join([str(type), components[1], components[2], components[3]])
             print("[DEBUG] New type is", type, "Old was", old_type)
             print("[UDP.TEmu] Just applied some random change")

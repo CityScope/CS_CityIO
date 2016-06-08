@@ -32,6 +32,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     response = client.handle_opcode(data)
                     self.request.sendall(response)
                     data = self.request.recv(4048)
+
         except ConnectionResetError:
             print("[TCP.Server] Connection by {} was reset.".format(client))
         except ConnectionAbortedError:
@@ -54,7 +55,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         result = None
         if issubclass(client_type, clients.Viewer):
             table_id, data = readstring(data)
-            #print(self.server.tables)
+            # print(self.server.tables)
             result = client_type(self)
 
             self.server.assign_to_table(result, table_id)
@@ -88,6 +89,3 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
                 viewer.table.remove_viewer(viewer)
             self.tables[table_id].add_viewer(viewer)
             viewer.table = self.tables[table_id]
-
-
-

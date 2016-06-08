@@ -4,7 +4,7 @@
 import serverHandler
 import debugUDP
 
-VERSION = "4/26/2016 3:09PM"
+VERSION = "5/02/2016 5:01PM"
 
 if __name__ == "__main__":
     # The host and the port for the server. Keep the host blank, so the clients can connect using the domain name.

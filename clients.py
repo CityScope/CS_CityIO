@@ -202,8 +202,11 @@ class CityIOTable(Table):
         return self.feedback_data.get(b, CityIOTable.FeedbackInfo())
 
     def get_dependent_data(self, key):
-        heat = self.get_feedback(key)
-        return int_to_bytes(heat.magnitude, 2)
+        if(0 <= key < 256):
+            heat = self.get_feedback(key)
+            return int_to_bytes(heat.magnitude, 2)
+
+        return b''
 
     def update_status(self, data):
         status, data = readbyte(data)
