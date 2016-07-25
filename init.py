@@ -1,6 +1,7 @@
 # The main file and the only one that is supposed to be run from console.
 # Starts the UDP/TCP emulator in parallel and starts the server in the main thread.
-
+import threading
+from cmdHandler import *
 import serverHandler
 import debugUDP
 
@@ -16,5 +17,8 @@ if __name__ == "__main__":
 
     # Initialize and start the server main server.
     server = serverHandler.ThreadedTCPServer((HOST, PORT))
-    server.serve_forever()
+    server_thread = threading.Thread(target=lambda: server.serve_forever())
+    server_thread.daemon = True
+    server_thread.start()
 
+    cmdHandler(server).cmdloop()
