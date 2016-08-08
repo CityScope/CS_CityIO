@@ -1,6 +1,5 @@
 import struct
 import json
-import cmdHandler
 
 BYTE_ORDER = 'little'
 
@@ -62,20 +61,10 @@ def writefloat(f):
     return struct.pack('f', f)
 
 
-# Unused. Will be used to log errors
-def log(text, *args, **kwargs) -> None:
-    """ type: (bytes) -> None
-    """
-    if cmdHandler.cmdHandler.debug:
-        print(str(text).format(*args, **kwargs))
-    # print(data, file="log.txt")
-    pass
-
-
 class Payload(object):
     def __init__(self, j, **kwargs):
-        # self.__dict__ = kwargs
+        self.__dict__ = kwargs
         if type(j) is str:
-            self.__dict__ = json.loads(j)
+            self.__dict__.update(json.loads(j))
         elif type(j) is dict:
-            self.__dict__ = j
+            self.__dict__.update(j)

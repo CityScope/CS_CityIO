@@ -1,28 +1,38 @@
 import cmd
-import clients
-import serverHandler
+from typing import Dict, Set
+from clients import CityIOTableJSON
+from serverHandler import ThreadedTCPServer
 
-class cmdHandler(cmd.Cmd):
+
+def log(text, *args, **kwargs) -> None:
+    """ type: (bytes) -> None
+    """
+    if CmdHandler.debug:
+        print(str(text).format(*args, **kwargs))
+    # print(data, file="log.txt")
+
+
+class CmdHandler(cmd.Cmd):
     """Simple command processor example."""
     debug = False
 
-    def __init__(self, server: serverHandler.ThreadedTCPServer):
+    def __init__(self, server):
         super().__init__()
-        self.server = server
+        self.server = server  # type: ThreadedTCPServer
 
     def do_debug(self, status):
         global debug
         if status == "on":
-            cmdHandler.debug = True
+            CmdHandler.debug = True
             print("Debug is on now.")
         elif status == "off":
-            cmdHandler.debug = False
+            CmdHandler.debug = False
             print("Debug is off now")
         else:
             print("debug (on|off)")
 
     def do_exit(self, line):
-        quit()
+        quit(0)
 
     def do_comments(self, line):
         args = line.split(" ")
@@ -30,13 +40,13 @@ class cmdHandler(cmd.Cmd):
         if opp == "clear":
             for k, table in self.server.tables.items():
                 with table.lock:
-                    comments = table.comments # type: set(clients.CityIOTableJSON.Comment)
+                    comments = table.comments # type: Set(CityIOTableJSON.Comment)
                     comments.clear()
 
         elif opp == "info":
             for k, table in self.server.tables.items():
                 with table.lock:
-                    l = len(table.comments)  # type: dict[int, clients.CityIOTableJSON.Comment]
+                    l = len(table.comments)  # type: Dict[int, CityIOTableJSON.Comment]
                     print("Table {}: {} comments".format(table.id, l))
 
         elif opp == "list":
@@ -88,3 +98,7 @@ class cmdHandler(cmd.Cmd):
 
     def postloop(self):
         print()
+
+
+# Unused. Will be used to log errors
+

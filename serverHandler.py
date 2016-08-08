@@ -1,12 +1,12 @@
 import socket
 import threading
 import socketserver
-import clients
-import cmdHandler
+import json
 
-from binaryUtils import *
 
 # The beginning of the string for any handshake
+from clients import JSONClient, TYPE_CODE, CityIOAppJSON, CityIOTableJSON
+
 SALT = "CIOMIT"
 SALT_LEN = len(SALT)
 
@@ -20,26 +20,29 @@ def validate_json(string):
 
 
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
+    def __init__(self, request, client_address, server):
+        super().__init__(request, client_address, server)
+        self.client = None
+
     def finish(self):
         print("[TCP.Server] Client {} Disconnected".format(self.client_address))
 
     def handle(self):
-        client = None
         try:
             # data = self.request.recv(1024)
-            client = self.handle_first_input()
+            self.handle_first_input()
         except ConnectionResetError:
-            print("[TCP.Server] Connection by {} was reset.".format(client))
+            print("[TCP.Server] Connection by {} was reset.".format(self.client))
         except ConnectionAbortedError:
-            print("[TCP.Server] Connection by {} was aborted.".format(client))
+            print("[TCP.Server] Connection by {} was aborted.".format(self.client))
         except ValueError as error:
             print("[TCP.Server] Value Error:", error)
         finally:
-            if client is clients.JSONClient:
-                client.on_disconnect()
+            if self.client is JSONClient:
+                self.client.on_disconnect()
 
     def main_loop(self, client):
-
+        from CmdHandler import log
         data = self.recv_json()
         while data is not None and len(data) > 0:
             # print("[TCP.Server] Received from {client}.".format(client=type(client)))
@@ -64,35 +67,36 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             return None
 
         type_code = data["type"]
-        if type_code not in clients.TYPE_CODE:
+        if type_code not in TYPE_CODE:
             return None
 
-        client_type = clients.TYPE_CODE[type_code]
+        client_type = TYPE_CODE[type_code]
 
-        result = None
-        if issubclass(client_type, clients.CityIOAppJSON):
+        client = None
+        if issubclass(client_type, CityIOAppJSON):
             table_id = data["table"]
             # print(self.server.tables)
 
-            table = self.server.assign_to_table(result, table_id)
-            result = client_type(self, table)
+            table = self.server.assign_to_table(client, table_id)
+            client = client_type(self, table)
 
-        elif issubclass(client_type, clients.CityIOTableJSON):
+        elif issubclass(client_type, CityIOTableJSON):
             table_id = data["id"]
             dim_x, dim_y = data["width"], data["height"]
             table = client_type(self, table_id, dim_x, dim_y)
             self.server.create_table(table)
-            result = table
+            client = table
 
         print("[TCP.Server] New", client_type.__name__, "has joined.")
 
-        if result is not None:
+        if client is not None:
+            self.client = client
             response_obj = {"result": "OK"}
             response = bytes(json.dumps(response_obj), "utf-8")
             self.request.sendall(response)
-            self.main_loop(result)
+            self.main_loop(client)
 
-        return result
+        return client
 
     def recv_json(self, size=1024):
         data = b''
@@ -113,7 +117,7 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
         self.lock = threading.Lock()
         super().__init__(ip_port, ThreadedTCPRequestHandler)
 
-    def create_table(self, table: clients.CityIOTableJSON) -> clients.CityIOTableJSON:
+    def create_table(self, table: CityIOTableJSON) -> CityIOTableJSON:
         with self.lock:
             self.tables[table.id] = table
 

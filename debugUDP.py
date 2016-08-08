@@ -4,9 +4,11 @@ import socket
 import time
 import threading
 import random
-from binaryUtils import *
+import json
+#from binaryUtils import *
 
 # ex_start = re.compile('^gridIndex\t(?P<gridIndex>\d+?)\n')
+
 ex_start = re.compile('^COLORTIZER\n')
 ex_data = re.compile('(^(?P<id>-?\d+)\t(?P<x>-?\d+)\t(?P<y>-?\d+)\t(?P<rot>-?\d+))+?$', re.MULTILINE)
 SAFE_TIME_SECONDS = 15
@@ -165,16 +167,16 @@ class MyUDPServer(socketserver.UDPServer):
             self.last_save_time = time.time()
 
 
-def startUDP(ip, port):
+def start_udp(ip, port):
     time.sleep(5)
-    HOST, PORT = "", 9998
-    server = MyUDPServer((HOST, PORT), MyUDPHandler)
+    host_local, port_local = "", 9998
+    server = MyUDPServer((host_local, port_local), MyUDPHandler)
     server.start_tcp(ip, port)
     print("[UDP.TEmu] UDP starting server...")
     server.serve_forever()
 
 
 def init(ip, port):
-    server_thread = threading.Thread(target=lambda: startUDP(ip, port))
+    server_thread = threading.Thread(target=lambda: start_udp(ip, port))
     server_thread.daemon = True
     server_thread.start()
