@@ -2,9 +2,12 @@ import socket
 import threading
 import socketserver
 import json
-
+import re
+from typing import Dict
 
 # The beginning of the string for any handshake
+from http.server import BaseHTTPRequestHandler
+
 from clients import JSONClient, TYPE_CODE, CityIOAppJSON, CityIOTableJSON
 
 SALT = "CIOMIT"
@@ -83,8 +86,11 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         elif issubclass(client_type, CityIOTableJSON):
             table_id = data["id"]
             dim_x, dim_y = data["width"], data["height"]
-            table = client_type(self, table_id, dim_x, dim_y)
-            self.server.create_table(table)
+            if table_id in self.server.tables:
+                table = self.server.tables[table_id]
+            else:
+                table = client_type(self, table_id, dim_x, dim_y)
+                self.server.create_table(table)
             client = table
 
         print("[TCP.Server] New", client_type.__name__, "has joined.")
@@ -113,7 +119,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 # Class for the TCP server
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     def __init__(self, ip_port):
-        self.tables = {}
+        self.tables = {} # type: Dict[str, CityIOTableJSON]
         self.lock = threading.Lock()
         super().__init__(ip_port, ThreadedTCPRequestHandler)
 
@@ -127,3 +133,43 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
                 return None
             table = self.tables[table_id]
             return table
+
+
+def HTTPHandlerFactory(server):
+
+    ex_path = re.compile('^/(?P<table_id>\w+).json$')
+
+    class HTTPHandler(BaseHTTPRequestHandler):
+        # def __init__(self, request, client_address, server):
+            # super().__init__(request, client_address, server)
+        def _set_headers(self):
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+
+        def do_GET(self):
+            self._set_headers()
+            result = ex_path.match(self.path)
+            if result is None:
+                return
+            table_id = result.group("table_id")
+            if table_id not in server.tables:
+                response_obj = {
+                    "error": "table not found"
+                }
+            else:
+                table = server.tables[table_id] # type: CityIOTableJSON
+                response_obj = table.retrieve_data()
+
+            response = bytes(json.dumps(response_obj), "utf-8")
+            self.wfile.write(response)
+
+        def do_HEAD(self):
+            self._set_headers()
+
+        def do_POST(self):
+            # Doesn't do anything with posted data
+            self._set_headers()
+            # self.wfile.write("<html><body><h1>POST!</h1></body></html>")
+
+    return HTTPHandler

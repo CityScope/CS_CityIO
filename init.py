@@ -1,8 +1,10 @@
 # The main file and the only one that is supposed to be run from console.
 # Starts the UDP/TCP emulator in parallel and starts the server in the main thread.
 import threading
+from http.server import HTTPServer
+
 import debugUDP
-from serverHandler import ThreadedTCPServer
+from serverHandler import ThreadedTCPServer, HTTPHandlerFactory
 
 from CmdHandler import CmdHandler
 
@@ -21,5 +23,11 @@ if __name__ == "__main__":
     server_thread = threading.Thread(target=lambda: server.serve_forever())
     server_thread.daemon = True
     server_thread.start()
+
+    server_address = ('', 8000)
+    httpd = HTTPServer(server_address, HTTPHandlerFactory(server))
+    http_server_thread = threading.Thread(target=lambda: httpd.serve_forever())
+    http_server_thread.daemon = True
+    http_server_thread.start()
 
     CmdHandler(server).cmdloop()
