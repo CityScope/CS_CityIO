@@ -4,9 +4,11 @@ import socket
 import time
 import threading
 import random
-from binaryUtils import *
+import json
+#from binaryUtils import *
 
 # ex_start = re.compile('^gridIndex\t(?P<gridIndex>\d+?)\n')
+
 ex_start = re.compile('^COLORTIZER\n')
 ex_data = re.compile('(^(?P<id>-?\d+)\t(?P<x>-?\d+)\t(?P<y>-?\d+)\t(?P<rot>-?\d+))+?$', re.MULTILINE)
 SAFE_TIME_SECONDS = 15
@@ -15,27 +17,28 @@ change_freq = 8
 
 def get_data(text_data, is_working):
     ll = ex_data.findall(text_data)
-    data = b"\x01" + int_to_bytes(len(ll)+2, 2)
 
+    grid = []
     for row in ll:
-        type, x, y, rot = int(row[1]), int(row[2]), int(row[3]), int(row[4])
-        id = x * 16 + y
-        data += int_to_bytes(id, 2) + int_to_bytes(5, 2) + int_to_bytes(x, 1) \
-                + int_to_bytes(y, 1) + int_to_bytes(type, 1) + int_to_bytes(rot, 2)
+        b_type, x, y, rot = int(row[1]), int(row[2]), int(row[3]), int(row[4])
+        grid.append({"x": x, "y": y, "type": b_type, "rot": rot})
 
     lines = text_data.split('\n')
     density = [int(v) for v in lines[-2].split("\t")]
     population = [int(v) for v in lines[-1].split("\t")]
 
-    data += int_to_bytes(1000, 2) + int_to_bytes(len(density), 2) + b''.join([int_to_bytes(d, 1) for d in density])
-    data += int_to_bytes(1001, 2) + int_to_bytes(len(population)*4, 2) + b''.join([int_to_bytes(p, 4) for p in population])
     # print("[debug] density: {}", density)
 
-    print("[debug] population: {}", population)
-    print("{0} + {1} ({2} + {3})", len(ll), 2, len(density), len(population))
-    print(data)
-    status_req = b'\x03' + bytes([is_working])
-    return b'\x00'.join([data, status_req])
+    # print("[debug] population: {}", population)
+    # print("{0} + {1} ({2} + {3})", len(ll), 2, len(density), len(population))
+
+    objects = {"population": population, "density": density}
+
+    data = {"grid": grid, "objects": objects}
+    init_request = {"id": 1, "opcode": "init", "data": data}
+    status_request = {"id": 2, "opcode": "status", "data": {"status": is_working}}
+    result = json.dumps([init_request, status_request])
+    return result
 
 
 def client_emulator(ip, port, server):
@@ -43,19 +46,27 @@ def client_emulator(ip, port, server):
     sock.connect((ip, port))
     last_data = ""
     try:
-        message = b"CIOMIT" + b"\x03" + b"\x04tab1"
+        conn_obj = {
+            "salt": "CIOMIT",
+            "type": "table",
+            "id": "tab1",
+            "width": 16,
+            "height": 16
+        }
+        # message = b"CIOMIT" + b"\x06" + b"\x04tab1"
+        message = bytes(json.dumps(conn_obj), "utf-8")
         sock.sendall(message)
         response = sock.recv(1024)
-        print("[TCP.TEmu] Received by table: {}".format(response))
+        # print("[TCP.TEmu] Received by table: {}".format(response))
         while True:
             data, is_working = server.get_data()
 
             if data != last_data:
-                message = get_data(data, is_working)
+                message = bytes(get_data(data, is_working), 'utf-8')
                 sock.sendall(message)
-                print("[TCP.TEmu] Table has sent some data")
+                # print("[TCP.TEmu] Table has sent some data")
                 response = sock.recv(1024)
-                print("[TCP.TEmu] Received by table: {}".format(response))
+                # print("[TCP.TEmu] Received by table: {}".format(response))
                 last_data = data
 
             time.sleep(0.2)
@@ -109,7 +120,7 @@ class MyUDPServer(socketserver.UDPServer):
                 self.apply_random_change()
             else:
                 self.save_data_to_file()
-            return (self.data, self.working)
+            return self.data, self.working
 
     def set_data(self, data):
         with self.lock:
@@ -123,7 +134,6 @@ class MyUDPServer(socketserver.UDPServer):
     def apply_random_change(self):
         if time.time() - self.last_random_change_time > change_freq:
 
-            last_random_change_time = time.time()
             rows = ex_data.findall(self.data)
             if len(rows) == 0:
                 print("[TCP.TEmu] Tried to apply a change on empty set. Data was loaded from file.")
@@ -140,8 +150,7 @@ class MyUDPServer(socketserver.UDPServer):
                 # if type != 6:
                 #    break
             n_s = '\t'.join([str(type), components[1], components[2], components[3]])
-            print("[DEBUG] New type is", type, "Old was", old_type)
-            print("[UDP.TEmu] Just applied some random change")
+            # print("[DEBUG] New type is", type, "Old was", old_type)
             self.data = self.data.replace(r[0], n_s)
             self.last_random_change_time = time.time()
 
@@ -155,20 +164,19 @@ class MyUDPServer(socketserver.UDPServer):
             f = open(MyUDPServer.file_name, 'w')
             f.write(self.data)
             f.close()
-            print("[UDP.TEmu] Just saved the latest data")
             self.last_save_time = time.time()
 
 
-def startUDP(ip, port):
+def start_udp(ip, port):
     time.sleep(5)
-    HOST, PORT = "", 9998
-    server = MyUDPServer((HOST, PORT), MyUDPHandler)
+    host_local, port_local = "", 9998
+    server = MyUDPServer((host_local, port_local), MyUDPHandler)
     server.start_tcp(ip, port)
     print("[UDP.TEmu] UDP starting server...")
     server.serve_forever()
 
 
 def init(ip, port):
-    server_thread = threading.Thread(target=lambda: startUDP(ip, port))
+    server_thread = threading.Thread(target=lambda: start_udp(ip, port))
     server_thread.daemon = True
     server_thread.start()
