@@ -4,7 +4,7 @@ import threading
 from http.server import HTTPServer
 
 import debugUDP
-from serverHandler import ThreadedTCPServer, HTTPHandlerFactory
+from serverHandler import ThreadedTCPServer, http_handler_factory
 
 from CmdHandler import CmdHandler
 
@@ -24,8 +24,8 @@ if __name__ == "__main__":
     server_thread.daemon = True
     server_thread.start()
 
-    server_address = ('', 8000)
-    httpd = HTTPServer(server_address, HTTPHandlerFactory(server))
+    server_address = ('', 80)
+    httpd = HTTPServer(server_address, http_handler_factory(server))
     http_server_thread = threading.Thread(target=lambda: httpd.serve_forever())
     http_server_thread.daemon = True
     http_server_thread.start()

@@ -65,7 +65,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     def handle_first_input(self):
         data = self.recv_json()
 
-        salt = data["salt"]
+        salt = data.get("salt", None)
         if salt != SALT:
             return None
 
@@ -119,7 +119,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 # Class for the TCP server
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     def __init__(self, ip_port):
-        self.tables = {} # type: Dict[str, CityIOTableJSON]
+        self.tables = {}  # type: Dict[str, CityIOTableJSON]
         self.lock = threading.Lock()
         super().__init__(ip_port, ThreadedTCPRequestHandler)
 
@@ -135,9 +135,13 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
             return table
 
 
-def HTTPHandlerFactory(server):
-
-    ex_path = re.compile('^/(?P<table_id>\w+).json$')
+def http_handler_factory(server):
+    """
+    Factory for the HTTP handler.
+    :param server:
+    :return:
+    """
+    ex_path = re.compile('^/(?P<table_id>\w+).json(?P<delta>\?d=\d+)?$')
 
     class HTTPHandler(BaseHTTPRequestHandler):
         # def __init__(self, request, client_address, server):
@@ -151,15 +155,41 @@ def HTTPHandlerFactory(server):
             self._set_headers()
             result = ex_path.match(self.path)
             if result is None:
-                return
-            table_id = result.group("table_id")
-            if table_id not in server.tables:
                 response_obj = {
-                    "error": "table not found"
+                    "tables": list(server.tables.keys())
                 }
             else:
-                table = server.tables[table_id] # type: CityIOTableJSON
-                response_obj = table.retrieve_data()
+                table_id = result.group("table_id")
+                if table_id not in server.tables:
+                    response_obj = {
+                        "error": "table not found"
+                    }
+                else:
+                    table = server.tables[table_id] # type: CityIOTableJSON
+                    last_delta = int(result.group("delta"))
+                    if last_delta is None:
+                        last_delta = 0
+
+                    grid, objects, new_delta = table.retrieve_data(last_delta)
+
+                    grid_list = []
+                    for pos, cell in grid.items():
+                        x, y = pos
+                        row = {
+                            "x": x,
+                            "y": y,
+                            "rot": cell.rot,
+                            "type": cell.type,
+                            # "magnitude": len(cell.comments)
+                        }
+                        grid_list.append(row)
+
+                    result = {
+                        "new_delta": new_delta,
+                        "grid": grid_list,
+                        "objects": objects
+                    }
+                    response_obj = result
 
             response = bytes(json.dumps(response_obj), "utf-8")
             self.wfile.write(response)
