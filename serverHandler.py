@@ -1,9 +1,8 @@
-import socket
 import threading
 import socketserver
 import json
 import re
-from typing import Dict
+from typing import List, Dict, Any, AnyStr, Set, Optional, Tuple, Callable, Union
 
 # The beginning of the string for any handshake
 from http.server import BaseHTTPRequestHandler
@@ -14,8 +13,8 @@ SALT = "CIOMIT"
 SALT_LEN = len(SALT)
 
 
-# Class for handling incoming connections
 def validate_json(string):
+    """Shortcut to check if the string is a valid JSON without raising an exception."""
     try:
         return json.loads(string)
     except json.JSONDecodeError:
@@ -23,38 +22,55 @@ def validate_json(string):
 
 
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
+    """
+    Class for the incoming clients (both Tables and Clients!). Takes care of the handshake and handling
+    the request-response loop.
+    """
     def __init__(self, request, client_address, server):
         super().__init__(request, client_address, server)
         self.client = None
 
     def finish(self):
+        """The function is being called after the connection is reset."""
         print("[TCP.Server] Client {} Disconnected".format(self.client_address))
 
     def handle(self):
+        """The function is being called after the connection has been installed."""
+        # Catch exceptions to check if the connection is lost
         try:
-            # data = self.request.recv(1024)
-            self.handle_first_input()
+            # Handle handshake
+            self.client, error_msg = self.handle_first_input()
+            # If the client is successfully initialized
+            if self.client is not None:
+                # Send OK code
+                response_obj = {"result": "OK"}
+                self.send_obj(response_obj)
+                # Start main loop
+                self.main_loop()
+            else:
+                # Send the error msg
+                self.send_obj({"error:", error_msg})
         except ConnectionResetError:
             print("[TCP.Server] Connection by {} was reset.".format(self.client))
         except ConnectionAbortedError:
             print("[TCP.Server] Connection by {} was aborted.".format(self.client))
-        except ValueError as error:
-            print("[TCP.Server] Value Error:", error)
+        except ValueError as e:
+            print("[TCP.Server] Value Error:", e)
         finally:
-            if self.client is JSONClient:
-                self.client.on_disconnect()
+            pass
 
-    def main_loop(self, client):
+    def main_loop(self):
+        """Handles request/response loop"""
         from CmdHandler import log
         data = self.recv_json()
-        while data is not None and len(data) > 0:
-            # print("[TCP.Server] Received from {client}.".format(client=type(client)))
+        client_name = type(self.client).__name__
 
-            log("[TCP.Server] <- {}: {}", type(client).__name__, data)
-            response = client.handle_opcode(data)
-            self.request.sendall(response)
-            # print("[TCP.Server] Sending response({} bytes) to {}".format(len(response), client))
-            log("[TCP.Server] -> {}: {}", type(client).__name__, response)
+        # While we keep receiving data through network
+        while data is not None and len(data) > 0:
+            log("[TCP.Server] <- {}: {}", client_name, data)
+            response = self.client.handle_opcode(data)
+            self.send_obj(response)
+            log("[TCP.Server] -> {}: {}", client_name, json.dumps(response))
             data = self.recv_json()
 
         if data is None:
@@ -62,16 +78,17 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         if len(data) == 0:
             raise ValueError("Data is empty")
 
-    def handle_first_input(self):
+    def handle_first_input(self) -> Tuple[JSONClient, Union[str, None]]:
+        """Handles the handshake."""
         data = self.recv_json()
 
         salt = data.get("salt", None)
         if salt != SALT:
-            return None
+            return None, "Salt did not match."
 
         type_code = data["type"]
         if type_code not in TYPE_CODE:
-            return None
+            return None, "Unknown type of the client"
 
         client_type = TYPE_CODE[type_code]
 
@@ -92,19 +109,21 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 table = client_type(self, table_id, dim_x, dim_y)
                 self.server.create_table(table)
             client = table
-
         print("[TCP.Server] New", client_type.__name__, "has joined.")
 
-        if client is not None:
-            self.client = client
-            response_obj = {"result": "OK"}
-            response = bytes(json.dumps(response_obj), "utf-8")
-            self.request.sendall(response)
-            self.main_loop(client)
+        return client, "Given type is not supported"
 
-        return client
+    def send_obj(self, obj) -> None:
+        """Shortcut to send a serialized object as a response."""
+        self.send_string(json.dumps(obj))
 
-    def recv_json(self, size=1024):
+    def send_string(self, string) -> None:
+        """Shortcut to send a string as a response. Should not be used!"""
+        response = bytes(string, "utf-8")
+        self.request.sendall(response)
+
+    def recv_json(self, size=1024) -> Union[Dict[str, object], List[Dict[str, object]]]:
+        """Shortcut to receive an expected JSON object."""
         data = b''
         json_object = None
         while json_object is None:
@@ -118,6 +137,10 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
 # Class for the TCP server
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    """
+    Class for the server itself. Should contain the per-server variables like the list of the tables
+    and database handler.
+    """
     def __init__(self, ip_port):
         self.tables = {}  # type: Dict[str, CityIOTableJSON]
         self.lock = threading.Lock()
