@@ -8,23 +8,21 @@ from binaryUtils import *
 # import sqlalchemy
 
 
-# The base class for all the tables and viewers
-# operation = { 'id': 123123, 'opcode' : 'string', 'data': } -> string
-# "["+operation1+","+operation2+"]"
 class JSONClient:
+    """
+    The base class for all the tables and viewers
+    operation = { 'id': 123123, 'opcode' : 'string', 'data': } -> string
+    "["+operation1+","+operation2+"]
+    """
     RESULT_OK = {"result": "OK"}
     RESULT_ERROR = {"result:" "error"}
 
     def __init__(self, sock):
-        self.socket = sock
+        self.socket = sock  # Reference to the parent
         self.opcode_to_function = {}  # type: Dict[int, Callable[[Dict[str, Any]], Any]]
 
     def handle_opcode(self, requests):
         responses = []
-        # string = bytes.decode(data)
-        # print(data)
-        # print(string)
-        # requests = json.loads(string)
         for request in requests:
             r_id = request["id"]
             opcode = request["opcode"]
@@ -36,12 +34,11 @@ class JSONClient:
                 responses.append(result)
 
         # Send responses to all the opcodes separated by \x00
-        return bytes(json.dumps(responses), 'utf-8')
+        return responses
 
 
 class CityIOAppJSON(JSONClient):
     opcode = 5
-
     typecode = "client"
 
     def __init__(self, sock: socket.socket, table):

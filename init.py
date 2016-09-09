@@ -2,8 +2,6 @@
 # Starts the UDP/TCP emulator in parallel and starts the server in the main thread.
 import threading
 from http.server import HTTPServer
-
-import debugUDP
 from serverHandler import ThreadedTCPServer, http_handler_factory
 
 from CmdHandler import CmdHandler
@@ -18,16 +16,23 @@ if __name__ == "__main__":
     # Start the UDP/TCP emulator, which connects to localhost:PORT
     # debugUDP.init("localhost", PORT)
 
-    # Initialize and start the server main server.
+    # Initialize the server main server.
     server = ThreadedTCPServer((HOST, PORT))
+    # Start a new thread for the server to run
     server_thread = threading.Thread(target=lambda: server.serve_forever())
+    # Attach thread to the main process
     server_thread.daemon = True
+    # Start the thread
     server_thread.start()
 
-    server_address = ('', 80)
-    httpd = HTTPServer(server_address, http_handler_factory(server))
+    # Define HTTP address and port
+    http_server_address = ('', 80)
+    # Initialize the HTTP Server class. Use factory pattern to pass the TCP server instance to the HTTP server
+    httpd = HTTPServer(http_server_address, http_handler_factory(server))
+    # Creating and starting a thread
     http_server_thread = threading.Thread(target=lambda: httpd.serve_forever())
     http_server_thread.daemon = True
     http_server_thread.start()
 
+    # Starting the command handler
     CmdHandler(server).cmdloop()
