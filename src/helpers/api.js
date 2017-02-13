@@ -32,7 +32,7 @@ export function createTable (tableName,tableData) {
 }
 
 export function updateTable (tableName,tableData) {
-  return createTable(tablename, tableData)
+  return createTable(tableName, tableData)
 }
 
 export function getTableList () {
