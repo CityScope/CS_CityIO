@@ -5,7 +5,8 @@
   "author": "Yasushi Sakai <ysshski@gmail.com>",
   "scripts": {
     "prestart": "babel src -d bin && cp src/config/firebase_credentials.json bin/config",
-    "start": "node bin/index.js"
+    "start": "node bin/index.js",
+    "build": "babel src -d bin"
   },
   "license": "MIT",
   "dependencies": {
