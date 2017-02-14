@@ -1,4 +1,4 @@
-import { getLatestTables, isTableRegistered, getLatestTable} from './api' 
+import { getLatestTables, isTableRegistered, getLatestTable, createTable} from './api' 
 import { emptyState } from '../config/constants'
 import { Map, fromJS } from 'immutable'
 
@@ -38,9 +38,9 @@ export default class Tables{
 
   updateTable (tableName,data) {
     // set the data to memory
-    this.table.set(tableName,data)
+    this.tables.set(tableName,data)
     // const {head,tablePromise} = createTable(tableName,data)
-    createTable(tablename,data)
+    createTable(tableName,data)
     // return {tableName,id:head} // if we need the head
   }
 }
