@@ -1,5 +1,15 @@
 import path from 'path'
 
+//
+// general
+//
+
+export const PORT = 8080
+
+
+//
+// firebase
+//
 export const firebase = require("firebase-admin");
 
 const databaseURL = 'https://cityio-db681.firebaseio.com'

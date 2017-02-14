@@ -1,5 +1,5 @@
 import express from 'express'
-import firebase from './config/constants'
+import { firebase, PORT } from './config/constants'
 import bodyParser from 'body-parser'
 import { 
   isTableRegistered,
@@ -8,39 +8,31 @@ import {
   createTable,
   getTableList,
    } from './helpers/api'
-import {
-  emptyState
-} from './config/constants'
+import { emptyState } from './config/constants'
+import Tables from './helpers/Tables'
+
+let tables = new Tables()
+
 
 const app = express()
-//app.use(bodyParser.raw())
 app.use(bodyParser.json())
 app.use(bodyParser.raw({type:'text/plain'}))
 
-const port = 8080
-
 app.get('/',(req,res)=>{
   // get current registered tables
-  getTableList()
-    .then(tableList=>{res.json(tableList)}) 
+  res.json(tables.getList())
 })
 
 app.get('/table/:tableName',(req,res)=>{
   // get the latest state for a given table
   const tableName = req.params.tableName
-
-  isTableRegistered(tableName)
-    .then(result=>
-      result
-      ? getLatestTable(tableName).then(tableData=>res.json(tableData))
-      : res.json({...emptyState,error:`cannot find ${tableName}`})
-      )
+  tables.getTable(tableName)
+    .then((tableData)=>res.json(tableData))
 })
 
 app.post('/table/update/:tableName/',(req,res)=>{
-
+  const tableName = req.params.tableName
   let tableData
-
   switch (req.headers['content-type']){
     case 'application/json':
       tableData = req.body
@@ -50,18 +42,11 @@ app.post('/table/update/:tableName/',(req,res)=>{
       tableData = JSON.parse(req.body.toString('utf8'))
     break
   }
-
-  const tableName = req.params.tableName
-  isTableRegistered(tableName)
-    .then(isRegistered=>
-      isRegistered
-      ? updateTable(tableName,tableData)
-      : createTable(tableName,tableData)
-      )
-    .then(response=>{res.json(response)})
+  tables.updateTable(tableName,tableData)
+  res.json([`updated ${tableName}`])
 })
 
 
-app.listen(port,()=>{
-  console.log(`server started @ port ${port}`)
+app.listen(PORT,()=>{
+  console.log(`server started @ port ${PORT}`)
 })

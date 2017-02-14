@@ -15,8 +15,27 @@ export function getLatestTable (tableName) {
     .then(head=>ref.child(`tables/${tableName}/${head}`).once('value'))
     .then(screenshot => screenshot.val())
     .then(value=>{
-      console.log(value)
+      // console.log(value)
       return value
+    })
+}
+
+export function getLatestTables () {
+  let tableDataAll = {}
+  let tableNameList = []
+  return getTableList()
+    .then(tableNames=>{
+      tableNameList = tableNames
+      const promises = tableNameList.map(
+        tableName=>getLatestTable(tableName)
+        )
+      return Promise.all(promises)
+    })
+    .then(tableData=>{
+      tableNameList.map((tableName,index)=>{
+        tableDataAll[tableName]=tableData[index]
+      })
+      return tableDataAll
     })
 }
 
@@ -26,9 +45,10 @@ function updateHead (tableName,newHead) {
 
 export function createTable (tableName,tableData) {
   const head = ref.child(`tables/${tableName}`).push().key
-  return ref.child(`tables/${tableName}/${head}`).set(tableData)
+  const tablePromise = ref.child(`tables/${tableName}/${head}`).set(tableData)
     .then(()=>updateHead(tableName,head))
     .then(()=>({tableName,head}))
+  return {head,tablePromise}
 }
 
 export function updateTable (tableName,tableData) {
