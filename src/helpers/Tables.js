@@ -13,7 +13,6 @@ export default class Tables{
   getList () {
     return this.tables.keySeq().toArray()
   }
-
   getAllTables () {
     return getLatestTables()
       .then(data=>{
@@ -38,7 +37,7 @@ export default class Tables{
 
   updateTable (tableName,data) {
     // set the data to memory
-    this.tables.set(tableName,data)
+    this.tables = this.tables.set(tableName,data)
     // const {head,tablePromise} = createTable(tableName,data)
     createTable(tableName,data)
     // return {tableName,id:head} // if we need the head
