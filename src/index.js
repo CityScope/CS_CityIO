@@ -32,18 +32,32 @@ app.get('/table/:tableName',(req,res)=>{
 
 app.post('/table/update/:tableName/',(req,res)=>{
   const tableName = req.params.tableName
-  let tableData
+  let tableData;
   switch (req.headers['content-type']){
     case 'application/json':
       tableData = req.body
       break
     case 'text/plain':
     default :
-      tableData = JSON.parse(req.body.toString('utf8'))
+      try{
+        tableData = JSON.parse(req.body.toString('utf8'))
+      }catch(e){
+        if(e instanceof SyntaxError){
+          // res.json(['Invalid JSON, check the table data',e.name,e.message])
+          res.status(500).send(`
+            <h1>Invalid JSON data</h1>
+            <p>server could not parse the table data</p>
+            <p>check the json data you are sending</p>
+            <p>${e.name}: ${e.message}</p>`)
+          return
+        }
+      }
     break
   }
+
   tables.updateTable(tableName,tableData)
   res.json([`updated ${tableName}`])
+
 })
 
 
