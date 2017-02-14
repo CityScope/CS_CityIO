@@ -24,7 +24,7 @@ export default class Tables{
   getTable (tableName) {
     if(this.tables.has(tableName)){
       // it was in memory
-      return Promise.resolve(this.tables.get(tableName).toJS())
+      return Promise.resolve(this.tables.get(tableName))
     }else{
       // it was not in memory
       return isTableRegistered(tableName)
