@@ -1,6 +1,7 @@
 import { getLatestTables, isTableRegistered, getLatestTable, createTable} from './api' 
 import { emptyState } from '../config/constants'
 import { Map, fromJS } from 'immutable'
+import deepEqual from 'deep-equal'
 
 export default class Tables{
 
@@ -13,6 +14,7 @@ export default class Tables{
   getList () {
     return this.tables.keySeq().toArray()
   }
+
   getAllTables () {
     return getLatestTables()
       .then(data=>{
@@ -36,10 +38,19 @@ export default class Tables{
   }
 
   updateTable (tableName,data) {
-    // set the data to memory
-    this.tables = this.tables.set(tableName,data)
-    // const {head,tablePromise} = createTable(tableName,data)
-    createTable(tableName,data)
-    // return {tableName,id:head} // if we need the head
+
+    // check if its the same
+    const prevTable = this.tables.get(tableName).toJS()
+    delete prevTable.id
+    delete prevTable.timestamp
+
+    if(!deepEqual(prevTable,data)){
+      const tableDataWithId = createTable(tableName,data)
+      this.tables = this.tables.set(tableName,fromJS(tableDataWithId))
+      // console.log(`** updated table ${tableName}**`)
+    }else{
+      // console.log(`** no push because same data @ ${tableName}**`)
+    }
   }
+
 }

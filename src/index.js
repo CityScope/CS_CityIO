@@ -1,14 +1,6 @@
 import express from 'express'
-import { firebase, PORT } from './config/constants'
+import { PORT } from './config/constants'
 import bodyParser from 'body-parser'
-import { 
-  isTableRegistered,
-  getLatestTable,
-  updateTable,
-  createTable,
-  getTableList,
-   } from './helpers/api'
-import { emptyState } from './config/constants'
 import Tables from './helpers/Tables'
 
 let tables = new Tables()
@@ -32,7 +24,12 @@ app.get('/table/:tableName',(req,res)=>{
 
 app.post('/table/update/:tableName/',(req,res)=>{
   const tableName = req.params.tableName
-  let tableData;
+  
+  // it accepts two content-types,
+  // json and text, where text mode,
+  // it will be validated right after it
+  // is recieved
+  let tableData
   switch (req.headers['content-type']){
     case 'application/json':
       tableData = req.body
@@ -43,7 +40,6 @@ app.post('/table/update/:tableName/',(req,res)=>{
         tableData = JSON.parse(req.body.toString('utf8'))
       }catch(e){
         if(e instanceof SyntaxError){
-          // res.json(['Invalid JSON, check the table data',e.name,e.message])
           res.status(500).send(`
             <h1>Invalid JSON data</h1>
             <p>server could not parse the table data</p>

@@ -45,10 +45,11 @@ function updateHead (tableName,newHead) {
 
 export function createTable (tableName,tableData) {
   const head = ref.child(`tables/${tableName}`).push().key
-  const tablePromise = ref.child(`tables/${tableName}/${head}`).set(tableData)
+  const tableDataWithId = {...tableData, id:head, timestamp:Date.now()}
+  ref.child(`tables/${tableName}/${head}`).set(tableDataWithId)
     .then(()=>updateHead(tableName,head))
-    .then(()=>({tableName,head}))
-  return {head,tablePromise}
+    .catch(error=>{console.log(error)})
+  return tableDataWithId
 }
 
 export function updateTable (tableName,tableData) {
