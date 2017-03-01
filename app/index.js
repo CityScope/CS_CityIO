@@ -1,2 +1,0 @@
-
-navigator.getUserMedia({video:true,})
