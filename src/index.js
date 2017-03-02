@@ -2,6 +2,7 @@ import express from 'express'
 import { PORT } from './config/constants'
 import bodyParser from 'body-parser'
 import Tables from './helpers/Tables'
+import git from 'git-rev'
 
 let tables = new Tables()
 
@@ -26,7 +27,7 @@ app.post('/table/update/:tableName/',(req,res)=>{
   const tableName = req.params.tableName
   
   // it accepts two content-types,
-  // json and text, where text mode,
+  // json and text, where in text mode,
   // it will be validated right after it
   // is recieved
   let tableData
@@ -37,6 +38,7 @@ app.post('/table/update/:tableName/',(req,res)=>{
     case 'text/plain':
     default :
       try{
+        // JSON validation
         tableData = JSON.parse(req.body.toString('utf8'))
       }catch(e){
         if(e instanceof SyntaxError){
@@ -56,7 +58,16 @@ app.post('/table/update/:tableName/',(req,res)=>{
 
 })
 
-
 app.listen(PORT,()=>{
-  console.log(`server started @ port ${PORT}`)
+
+  git.short((str)=>{
+    console.log(`commit:${str}`)
+  })
+
+  git.branch((str)=>{
+    console.log(`branch:${str}`)
+  })
+
+  console.log(`server started @ port ${PORT}`
+  )
 })

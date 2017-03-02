@@ -6,20 +6,23 @@ import deepEqual from 'deep-equal'
 export default class Tables{
 
   constructor(){
-    // list of table names
-    this.tables = new Map()
+    // list of tabledata, key is tablename, each
+    // containing the latest state of the table
+    this.tables = new Map() 
     this.getAllTables()
   }
 
   getList () {
+    // so we just need the keys
     return this.tables.keySeq().toArray()
   }
 
   getAllTables () {
+    // usually just called once to
+    // have it stored in memory
     return getLatestTables()
       .then(data=>{
-        this.tables = fromJS(data)
-        console.log('** ready **')
+        this.tables = fromJS(data) // converts to immutable object
       })
   }
 
