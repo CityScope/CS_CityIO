@@ -5,7 +5,7 @@ import path from 'path'
 //
 
 export const PORT = 8080
-
+export const waitDuration = 500 //ms
 
 //
 // firebase

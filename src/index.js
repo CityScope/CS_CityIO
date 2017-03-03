@@ -58,6 +58,16 @@ app.post('/table/update/:tableName/',(req,res)=>{
 
 })
 
+app.get('/table/clear/:tableName/',(req,res)=>{
+  const tableName = req.params.tableName
+  tables.clearTable(tableName)
+    .then(()=>{
+      res.json([`cleared ${tableName}.`])
+    })
+    .catch(error=>res.json(error))
+})
+
+
 app.listen(PORT,()=>{
 
   git.short((str)=>{

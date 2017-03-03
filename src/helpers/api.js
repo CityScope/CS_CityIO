@@ -39,6 +39,14 @@ export function getLatestTables () {
     })
 }
 
+export function deleteTable (tableName) {
+  const promises = [
+    ref.child(`heads/${tableName}`).set(null),
+    ref.child(`tables/${tableName}`).set(null)
+  ]
+  return Promise.all(promises)
+}
+
 function updateHead (tableName,newHead) {
   return ref.child(`heads/${tableName}`).set(newHead)
 }

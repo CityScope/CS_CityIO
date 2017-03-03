@@ -1,4 +1,5 @@
-import { getLatestTables, isTableRegistered, getLatestTable, createTable} from './api' 
+import { deleteTable, getLatestTables, isTableRegistered, getLatestTable, createTable} from './api'
+import { shouldWait } from './utils' 
 import { emptyState } from '../config/constants'
 import { Map, fromJS } from 'immutable'
 import deepEqual from 'deep-equal'
@@ -40,10 +41,28 @@ export default class Tables{
       }
   }
 
+  clearTable (tableName){
+    return deleteTable(tableName)
+      .then(()=>{
+        if(this.tables.has(tableName)){
+          this.tables = this.table.delete(tableName)
+          console.log(`cleared table ${tableName}`)
+        }
+      })
+  }
+
   updateTable (tableName,data) {
 
-    // check if its the same
     const prevTable = this.tables.get(tableName).toJS()
+
+    console.log(prevTable)
+
+    // if its too soon to update
+    if(shouldWait(prevTable.timestamp)) {
+        // console.log(`** no push because not enough interval @ ${tableName}`)
+        return
+    }
+
     delete prevTable.id
     delete prevTable.timestamp
 
