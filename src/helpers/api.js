@@ -40,11 +40,11 @@ export function getLatestTables () {
 }
 
 export function deleteTable (tableName) {
-  const promises = [
-    ref.child(`heads/${tableName}`).set(null),
-    ref.child(`tables/${tableName}`).set(null)
-  ]
-  return Promise.all(promises)
+
+  ref.child(`heads/${tableName}`).set(null)
+  ref.child(`tables/${tableName}`).set(null)
+  
+  return Promise.resolve('deleted')
 }
 
 function updateHead (tableName,newHead) {
@@ -52,7 +52,13 @@ function updateHead (tableName,newHead) {
 }
 
 export function createTable (tableName,tableData) {
-  const head = ref.child(`tables/${tableName}`).push().key
+  
+  if(tableData.hasOwnProperty('id')){
+    const head = tableData.id
+  }else{
+    const head = ref.child(`tables/${tableName}`).push().key
+  }
+
   const tableDataWithId = {...tableData, id:head, timestamp:Date.now()}
   ref.child(`tables/${tableName}/${head}`).set(tableDataWithId)
     .then(()=>updateHead(tableName,head))

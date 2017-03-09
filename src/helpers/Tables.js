@@ -49,6 +49,19 @@ export default class Tables{
           console.log(`cleared table ${tableName}`)
         }
       })
+      .then(()=>`cleared table ${tableName}`)
+  }
+
+  softClearTable(tableName){
+    return deleteTable(tableName)
+      .then(()=>{
+        if(this.table.has(tableName)){
+          createTable(tableName,this.tables.get(tableName).toJS())
+            .then(newTableData=>{
+                this.tables = this.tables.set(tableName, newTableData)
+            })
+        }
+      })
   }
 
   updateTable (tableName,data) {

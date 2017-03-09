@@ -60,7 +60,7 @@ app.post('/table/update/:tableName/',(req,res)=>{
 
 app.get('/table/clear/:tableName/',(req,res)=>{
   const tableName = req.params.tableName
-  tables.clearTable(tableName)
+  tables.softClearTable(tableName)
     .then(()=>{
       res.json([`cleared ${tableName}.`])
     })
