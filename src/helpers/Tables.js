@@ -74,9 +74,7 @@ export default class Tables{
     
     }else{
 
-      console.log(Object.keys(this.tables))
       const prevTable = this.tables.get(tableName).toJS()
-      // console.log(prevTable)
 
       // if its too soon to update
       if(shouldWait(prevTable.timestamp)) {
