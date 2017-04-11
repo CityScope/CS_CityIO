@@ -39,6 +39,12 @@ export function getLatestTables () {
     })
 }
 
+
+export function hardReset () {
+  ref.remove()
+  return Promise.resolve('hard reset done')
+}
+
 export function deleteTable (tableName) {
 
   ref.child(`heads/${tableName}`).set(null)
@@ -52,11 +58,15 @@ function updateHead (tableName,newHead) {
 }
 
 export function createTable (tableName,tableData) {
-  
+ 
+  console.log(tableData)
+
+  let head;
+
   if(tableData.hasOwnProperty('id')){
-    const head = tableData.id
+    head = tableData.id
   }else{
-    const head = ref.child(`tables/${tableName}`).push().key
+    head = ref.child(`tables/${tableName}`).push().key
   }
 
   const tableDataWithId = {...tableData, id:head, timestamp:Date.now()}

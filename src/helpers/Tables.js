@@ -66,26 +66,35 @@ export default class Tables{
 
   updateTable (tableName,data) {
 
-    const prevTable = this.tables.get(tableName).toJS()
+    if(!this.tables.has(tableName)){
 
-    console.log(prevTable)
+      // create a new table 
+      const tableDataWithId = createTable(tableName,data)
+      this.tables = this.tables.set(tableName,)
+    
+    }else{
 
-    // if its too soon to update
-    if(shouldWait(prevTable.timestamp)) {
+      console.log(Object.keys(this.tables))
+      const prevTable = this.tables.get(tableName).toJS()
+      // console.log(prevTable)
+
+      // if its too soon to update
+      if(shouldWait(prevTable.timestamp)) {
         // console.log(`** no push because not enough interval @ ${tableName}`)
         return
+      }
+
+      delete prevTable.id
+      delete prevTable.timestamp
+
+      if(!deepEqual(prevTable,data)){
+        const tableDataWithId = createTable(tableName,data)
+        this.tables = this.tables.set(tableName,fromJS(tableDataWithId))
+        // console.log(`** updated table ${tableName}**`)
+      }else{
+        // console.log(`** no push because same data @ ${tableName}**`)
+      }
     }
 
-    delete prevTable.id
-    delete prevTable.timestamp
-
-    if(!deepEqual(prevTable,data)){
-      const tableDataWithId = createTable(tableName,data)
-      this.tables = this.tables.set(tableName,fromJS(tableDataWithId))
-      // console.log(`** updated table ${tableName}**`)
-    }else{
-      // console.log(`** no push because same data @ ${tableName}**`)
-    }
   }
-
 }

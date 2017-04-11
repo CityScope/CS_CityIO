@@ -1,6 +1,8 @@
 import express from 'express'
 import { PORT } from './config/constants'
 import bodyParser from 'body-parser'
+import { hardReset } from './helpers/api'
+
 import Tables from './helpers/Tables'
 import git from 'git-rev'
 
@@ -67,6 +69,13 @@ app.get('/table/clear/:tableName/',(req,res)=>{
     .catch(error=>res.json(error))
 })
 
+
+app.get('/tables/hardReset',(req, res) => {
+  hardReset()
+    .then(() => {
+      res.json('hard reset done.')
+    })
+})
 
 app.listen(PORT,()=>{
 
