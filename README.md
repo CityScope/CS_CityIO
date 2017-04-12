@@ -1,5 +1,32 @@
 # CityIO Server
-Node.js version
+
+the server script for cityscope platforms to send their data and make accessible
+to other clients (using, GAMA, Unity, Processing, Rhinoceros/Grasshopper, or anything using HTTP).
+
+KISS
+
+## API documentation
+
+the current main server is [http**s**://cityio.media.mit.edu](https://cityio.media.mit.edu/).
+if running locally, substitute the hostname to localhost:PORT (ex. http://localhost:8080/)
+
+
+### get list of tables
+  ```
+  (GET) https://cityio.media.mit.edu/
+  ```
+
+### get latest table data
+  ```
+  (GET)  https://cityio.media.mit.edu/table/:tableName
+  ```
+
+### post table data
+  ```
+  (POST)  https://cityio.media.mit.edu/table/upate/:tableName
+  ```
+  body should either be raw or json
+
 ## how to run it locally
 
 1. install [yarn](https://yarnpkg.com/en/docs/install)
@@ -36,20 +63,4 @@ Node.js version
 
 6. check ```localhost:8080```
 
-## API documentation
 
-### get list of tables
-  ```
-  (GET) localhost:8080/
-  ```
-
-### get latest table data
-  ```
-  (GET) localhost:8080/table/:tableName
-  ```
-
-### post table data
-  ```
-  (POST) localhost:8080/table/upate/:tableName
-  ```
-  body should either be raw or json
