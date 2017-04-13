@@ -27,6 +27,12 @@ if running locally, substitute the hostname to localhost:PORT (ex. http://localh
   ```
   body should either be raw or json
 
+### [CAUTION] reset database
+  ```
+  (GET)  https://cityio.media.mit.edu/tables/hardReset
+  ```
+  drop everything in firebase.
+
 ## how to run it locally
 
 1. install [yarn](https://yarnpkg.com/en/docs/install)
