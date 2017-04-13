@@ -67,13 +67,15 @@ export default class Tables{
   updateTable (tableName,data) {
 
     if(!this.tables.has(tableName)){
-
+      
+      console.log(`created new table ${tableName}`)
       // create a new table 
       const tableDataWithId = createTable(tableName,data)
-      this.tables = this.tables.set(tableName,)
+      this.tables = this.tables.set(tableName,fromJS(data))
     
     }else{
-
+      
+      console.log(this.tables.get(tableName))
       const prevTable = this.tables.get(tableName).toJS()
 
       // if its too soon to update
