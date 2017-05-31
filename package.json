@@ -1,27 +1,29 @@
 {
   "name": "cityio",
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "cityio server written in typescript",
   "main": "index.js",
-  "author": "Yasushi Sakai <ysshski@gmail.com>",
   "scripts": {
-    "prestart": "babel src -d bin && cp src/config/firebase_credentials.json bin/config",
-    "start": "node bin/index.js",
-    "production": "babel src -d bin --presets=babili"
+    "build": "tsc && node ./dist/index.js",
+    "production": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mitmedialab/CityIOServer.git"
+  },
+  "author": "Yasushi Sakai",
   "license": "MIT",
-  "dependencies": {
-    "body-parser": "^1.16.1",
-    "deep-equal": "^1.0.1",
-    "express": "^4.14.1",
-    "firebase-admin": "^4.1.0",
-    "git-rev": "^0.2.1",
-    "immutable": "^3.8.1"
+  "bugs": {
+    "url": "https://github.com/mitmedialab/CityIOServer/issues"
   },
-  "devDependencies": {
-    "babel-cli": "^6.22.2",
-    "babel-core": "^6.22.1",
-    "babel-preset-babili": "^0.0.11",
-    "babel-preset-es2015": "^6.22.0",
-    "babel-preset-stage-0": "^6.22.0"
+  "homepage": "https://github.com/mitmedialab/CityIOServer#readme",
+  "dependencies": {
+    "@types/node": "^7.0.22",
+    "axios": "^0.16.1",
+    "body-parser": "^1.17.2",
+    "deep-equal": "^1.0.1",
+    "express": "^4.15.3",
+    "firebase-admin": "^5.0.0"
   }
 }
