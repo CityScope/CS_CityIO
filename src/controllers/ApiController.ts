@@ -1,6 +1,8 @@
 import axios, { AxiosError, AxiosResponse } from 'axios'
 import { Request, Response, Router } from 'express'
+import { baseURL } from '../config/constants'
 import { getTableNames } from '../helpers/api'
+import { html } from '../helpers/html'
 import TableManager, { emptyTable, ITable } from '../models/TableManager'
 
 const router: Router = Router()
@@ -17,14 +19,16 @@ router.get('/', async (req: Request, res: Response) => {
   const tableNames = await getTableNames()
 
   const links = tableNames.reduce((result, tn) => {
-    return result + `<p><a href="https://cityio.media.mit.edu/table/${tn}">${tn}</a></p>`
+    return result + `<li><a href="${baseURL}/table/${tn}">${tn}</a></li>`
   }, '')
 
-  res.send(`
-    <h1>tables</h1>
-    <p><img src="http://weknowyourdreams.com/images/unicorn/unicorn-08.jpg"></p>
+  res.send(html(`
+    <h1>cityio server</h1>
+    <p> <a href="https://github.com/mitmedialab/cityioserver">github repository</a> </p>
+    <ul>
     ${links}
-    `)
+    </ul>
+    `))
 })
 
 /*
@@ -70,6 +74,16 @@ router.post('/table/update/:tableName', async (req: Request, res: Response) => {
   const newTable: ITable = await tableManager.addTable(tableName, formattedTableData)
 
   res.json(newTable)
+})
+
+/*
+ * clear table data
+ * */
+router.get('/table/clear/:tableName', async (req: Request, res: Response) => {
+  const tableName: string = req.params.tableName
+  await tableManager.clearTable(tableName)
+  res.json(`cleared ${tableName}`)
+
 })
 
 export const ApiController: Router = router
