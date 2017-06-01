@@ -3,14 +3,9 @@ import { Request, Response, Router } from 'express'
 import { baseURL } from '../config/constants'
 import { getTableNames } from '../helpers/api'
 import { html } from '../helpers/html'
+import { tableManager } from '../index'
 import TableManager, { emptyTable, ITable } from '../models/TableManager'
-
 const router: Router = Router()
-
-let tableManager: TableManager
-
-TableManager.loadTables()
-  .then((tm) => { tableManager = tm })
 
 /*
  * get table name
@@ -23,11 +18,12 @@ router.get('/', async (req: Request, res: Response) => {
   }, '')
 
   res.send(html(`
-    <h1>cityio server</h1>
-    <p> <a href="https://github.com/mitmedialab/cityioserver">github repository</a> </p>
+    <img src="http://www.vgmuseum.com/end/nes/a/venuswar-3.png" width="512">
+    <p>available tables and json</p>
     <ul>
     ${links}
     </ul>
+    <p> more on api and documenation for the server: <a href="https://github.com/mitmedialab/cityioserver">github repository</a> </p>
     `))
 })
 

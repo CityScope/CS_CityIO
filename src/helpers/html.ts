@@ -1,14 +1,21 @@
 export function html (body: string): string {
   const appName: string = 'cityio'
-  const firstPart: string = `
-  <html>
+  const firstPart: string = ` <html>
   <head>
   <title>${appName}</title>
-  <link rel="stylesheet" type="text/css" href="http://yasushisakai.com/static/default.css">
   </head>
+  <style>
+  body {
+    background: #000;
+    color: #FFF;
+  }
+  a {
+    color: #DDD;
+  }
+  </style>
   <body>
-    `
-  const secondPart: string = `</body></html>`
+  `
+  const secondPart: string = '</body></html>'
 
   return `${firstPart}${body}${secondPart}`
 }

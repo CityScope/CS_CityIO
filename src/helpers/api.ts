@@ -15,7 +15,7 @@ export async function getTableNames (): Promise<string[]> {
 export async function isTableRegistered (tableName: string): Promise<boolean> {
   try {
     return await ref.child(`tables/${tableName}`).once('value')
-      .then((screenshot) => screenshot.val() === null ? true : false)
+      .then((screenshot) => screenshot.val() === null ? false : true)
   } catch (e) {
     console.error(`error checking existance of ${tableName}`)
     console.log(e)
