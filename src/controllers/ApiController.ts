@@ -14,7 +14,7 @@ router.get('/', async (req: Request, res: Response) => {
   const tableNames = await getTableNames()
 
   const links = tableNames.reduce((result, tn) => {
-    return result + `<li><a href="${baseURL}/table/${tn}">${tn}</a></li>`
+    return result + `<li><a href="${baseURL}/api/table/${tn}">${tn}</a></li>`
   }, '')
 
   res.send(html(`
