@@ -1,4 +1,3 @@
-cityio server program
+# cityio server program
 
-see 
-[wiki](https://https://github.com/mitmedialab/cityioserver/wiki)
+see [wiki](https://github.com/mitmedialab/cityioserver/wiki) for details
