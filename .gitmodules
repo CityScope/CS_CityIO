@@ -1,0 +1,3 @@
+[submodule "examples/Unity"]
+	path = examples/Unity
+	url = https://github.com/RELNO/CSharpScope_Toolbox
