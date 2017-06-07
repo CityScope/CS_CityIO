@@ -1,4 +1,4 @@
-import { ref } from '../config/constants'
+import { isLocal, ref } from '../config/constants'
 
 import { emptyTable, ITable, ITables } from '../models/TableManager'
 
@@ -7,7 +7,7 @@ export async function getTableNames (): Promise<string[]> {
     return await ref.child('heads').once('value')
     .then((snapshot) => Object.keys(snapshot.val()))
   } catch (e) {
-    console.error(e)
+    if (!isLocal) { console.error(e) }
     return Promise.resolve([])
   }
 }
@@ -18,7 +18,7 @@ export async function isTableRegistered (tableName: string): Promise<boolean> {
       .then((screenshot) => screenshot.val() === null ? false : true)
   } catch (e) {
     console.error(`error checking existance of ${tableName}`)
-    console.log(e)
+    if (!isLocal) { console.error(e) }
     return Promise.resolve(false)
   }
 }
@@ -30,7 +30,7 @@ export async function getLatestTable (tableName): Promise<any> {
   ('value').then((snapshot) => snapshot.val())
   } catch (e) {
     console.error(`error fetching latest key for ${tableName}`)
-    console.error(e)
+    if (!isLocal) { console.error(e) }
     return Promise.resolve(emptyTable)
   }
 
@@ -38,7 +38,7 @@ export async function getLatestTable (tableName): Promise<any> {
     return await ref.child(`tables/${tableName}/${latestKey}`).once('value').then((snapshot) => snapshot.val())
   } catch (e) {
     console.error(`error fetching latest data for ${tableName}/${latestKey}`)
-    console.error(e)
+    if (!isLocal) { console.error(e) }
   }
 }
 
@@ -59,16 +59,22 @@ export async function dropTable (tableName: string): Promise<void> {
 }
 
 export async function createOrUpdateTable (tableName: string, tableData: ITable): Promise<ITable> {
-  const newId: string = await ref.child(`tables/${tableName}`).push().key
+  let newId: string
+
+  try {
+    newId = await ref.child(`tables/${tableName}`).push().key
+  } catch (e) {
+    newId = 'localId'
+  }
 
   const newTableData: ITable = { ...tableData, id: newId }
 
   try {
-  await ref.child(`tables/${tableName}/${newId}`).set(newTableData)
-  await ref.child(`heads/${tableName}`).set(newId)
+    await ref.child(`tables/${tableName}/${newId}`).set(newTableData)
+    await ref.child(`heads/${tableName}`).set(newId)
   } catch (e) {
     console.error('error adding/updating table data')
-    console.error(e)
+    if (!isLocal) { console.error(e) }
     return Promise.resolve(null)
   }
 
@@ -76,5 +82,9 @@ export async function createOrUpdateTable (tableName: string, tableData: ITable)
 }
 
 export async function updateTimeStamp (tableName: string, tableId: string, timestamp: number): Promise<void> {
-  await ref.child(`tables/${tableName}/${tableId}/timestamp`).set(timestamp)
+  try {
+    await ref.child(`tables/${tableName}/${tableId}/timestamp`).set(timestamp)
+  } catch (e) {
+    console.log('unable to update timestamp @ server')
+  }
 }

@@ -12,16 +12,21 @@ export const baseURL: string = isDebug ? 'http://localhost:8080' : 'https://city
 export const PORT: number = 8080
 export const waitDuration: number = 500 // ms
 
+let didConnect: boolean = process.argv[3] !== 'local'
+
 //
 // firebase
 //
 
 const databaseURL: string = 'https://cityio-db681.firebaseio.com'
 
-firebase.initializeApp({
-  credential: firebase.credential.cert(serviceAccount),
-  databaseURL,
-})
+try {
+  firebase.initializeApp({
+    credential: firebase.credential.cert(serviceAccount),
+    databaseURL,
+  })} catch (e) {
+ didConnect = false
+}
 
 export const emptyState = {
   error: '',
@@ -29,4 +34,9 @@ export const emptyState = {
   objects: {},
 }
 
-export const ref: firebase.database.Reference = firebase.database().ref()
+if (!didConnect) {
+  console.log('GOING LOCAL')
+}
+
+export const ref: any = didConnect ? firebase.database().ref() : {}
+export const isLocal = !didConnect

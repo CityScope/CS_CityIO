@@ -1,6 +1,6 @@
 // import { fromJS, Map } from 'immutable'
 import * as deepEqual from 'deep-equal'
-import { waitDuration } from '../config/constants'
+import { isLocal, waitDuration } from '../config/constants'
 import {
   createOrUpdateTable,
   dropTable,
@@ -76,6 +76,14 @@ export default class TableManager {
 
   // overwrites
   public async addTable (tableName: string, tableData: ITable): Promise<ITable> {
+
+    if ( isLocal ) {
+      console.log('ADD TABLE LOCAL')
+      const newTable: ITable = {...tableData, timestamp: Date.now(), id: 'local'}
+      this.tables[tableName] = newTable
+
+      return newTable
+    }
 
     if (tableName in this.tables) {
       if (tableData.timestamp - this.tables[tableName].timestamp > waitDuration) {
