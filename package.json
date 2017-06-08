@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc && node ./dist/index.js debug local",
+    "debug": "tsc && node ./dist/index.js debug", 
     "production": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
