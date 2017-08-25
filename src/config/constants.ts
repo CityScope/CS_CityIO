@@ -8,7 +8,7 @@ export const baseURL: string = isDebug ? 'http://localhost:8080' : 'https://city
 export const PORT: number = 8080
 export const waitDuration: number = 500 // ms
 
-// let didConnect: boolean = process.argv[3] !== 'local'
+// let diddeConnect: boolean = process.argv[3] !== 'local'
 
 //
 // firebase

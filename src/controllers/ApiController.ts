@@ -1,7 +1,6 @@
 import axios, { AxiosError, AxiosResponse } from 'axios'
 import { Request, Response, Router } from 'express'
 import { baseURL } from '../config/constants'
-import { getTableNames } from '../helpers/api'
 import { html } from '../helpers/html'
 import { tableManager } from '../index'
 import TableManager, { emptyTable, ITable } from '../models/TableManager'
@@ -11,7 +10,7 @@ const router: Router = Router()
  * get table name
  * */
 router.get('/', async (req: Request, res: Response) => {
-  const tableNames = await getTableNames()
+  const tableNames = tableManager.getList()
 
   const links = tableNames.reduce((result, tn) => {
     return result + `<li><a href="${baseURL}/api/table/${tn}">${tn}</a></li>`
@@ -23,7 +22,9 @@ router.get('/', async (req: Request, res: Response) => {
     <ul>
     ${links}
     </ul>
-    <p> more on api and documenation for the server: <a href="https://github.com/mitmedialab/cityioserver">github repository</a> </p>
+    <p> more on api and documenation for the server:
+      <a href="https://github.com/mitmedialab/cityioserver">github repository</a>
+    </p>
     `))
 })
 
@@ -65,6 +66,7 @@ router.post('/table/update/:tableName', async (req: Request, res: Response) => {
       }
       break
   }
+  // the table data does not contain the id yet.
   const formattedTableData: ITable = {...emptyTable, ...tableData, timestamp: Date.now()}
   // console.log(formattedTableData)
   const newTable: ITable = await tableManager.addTable(tableName, formattedTableData)

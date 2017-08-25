@@ -12,12 +12,10 @@ app.use(json())
 app.use(raw({type: 'text/plain'}))
 
 export let tableManager: TableManager
-export let ref: any
 
-TableManager.loadTables(process.argv[3] === 'local')
+TableManager.loadTables()
   .then(( createdTm ) => {
     tableManager = createdTm
-    ref = tableManager.getRef()
 })
 
 app.use('/', ApiController)
