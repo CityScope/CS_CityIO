@@ -38,6 +38,15 @@ router.get('/table/:tableName', async (req: Request, res: Response) => {
 })
 
 /*
+ * (jsonp)
+ * */
+router.get('/table/p/:tableName', async (req: Request, res: Response) => {
+  const tableName: string = req.params.tableName
+  const table: ITable = await tableManager.getTable(tableName)
+  res.jsonp(table)
+})
+
+/*
  * post table data
  * TODO: get rid of update
  * */
