@@ -10,7 +10,6 @@
       "arrow-return-shorthand": [true],
       "quotemark" : [true, "single", "jsx-escape"],
       "indent" : [true, "spaces"],
-      "no-ununsed-variable" : [true],
       "no-console" : [true],
       "no-reference" : false
     }

@@ -34,15 +34,6 @@ router.get('/', async (req: Request, res: Response) => {
 router.get('/table/:tableName', async (req: Request, res: Response) => {
   const tableName: string = req.params.tableName
   const table: ITable = await tableManager.getTable(tableName)
-  res.json(table)
-})
-
-/*
- * (jsonp)
- * */
-router.get('/table/p/:tableName', async (req: Request, res: Response) => {
-  const tableName: string = req.params.tableName
-  const table: ITable = await tableManager.getTable(tableName)
   res.jsonp(table)
 })
 
@@ -80,7 +71,7 @@ router.post('/table/update/:tableName', async (req: Request, res: Response) => {
   // console.log(formattedTableData)
   const newTable: ITable = await tableManager.addTable(tableName, formattedTableData)
 
-  res.json(newTable)
+  res.jsonp(newTable)
 })
 
 /*
@@ -89,8 +80,7 @@ router.post('/table/update/:tableName', async (req: Request, res: Response) => {
 router.get('/table/clear/:tableName', async (req: Request, res: Response) => {
   const tableName: string = req.params.tableName
   await tableManager.clearTable(tableName)
-  res.json(`cleared ${tableName}`)
-
+  res.jsonp(`cleared ${tableName}`)
 })
 
 export const ApiController: Router = router
