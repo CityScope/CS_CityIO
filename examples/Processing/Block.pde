@@ -16,6 +16,9 @@ class Block {
   void display(PGraphics p) { 
     p.rectMode(CENTER);
       p.fill(255);
+      p.textSize(12);
+      p.textAlign(CENTER);
+      p.text(id,  location.x, location.y);
       if(id==6){
         p.fill(25);
         p.rect(location.x, location.y, size, size); 
