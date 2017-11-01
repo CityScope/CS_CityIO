@@ -21,6 +21,7 @@ global {
 	
 	init {
         do initGrid;
+        
 	}
 	
 	action initGrid{
@@ -33,8 +34,8 @@ global {
             cityMatrix cell <- cityMatrix grid_at { x, y };
             cell.type <- int(c["type"]);
         }  
-        save json_file("temp.json", matrixData);
-        //do command("curl -d \"\@temp.json\" -X POST http://localhost:3000/");
+        save(json_file("https://cityio.media.mit.edu/api/table/update/gamaTable", matrixData));
+        //string s <- command("curl -H \"Content-Type: application/json\" -X POST -d '@temp.json' https://cityio.media.mit.edu/api/table/update/gamaTable");
 	}
 	
 	reflex updateGrid when: ((cycle mod refresh) = 0){
