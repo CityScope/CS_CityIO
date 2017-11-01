@@ -7,6 +7,8 @@ import { tableManager } from '../index'
 import TableManager, { emptyTable, ITable } from '../models/TableManager'
 const router: Router = Router()
 
+router.use(cors())
+
 /*
  * get table name
  * */
@@ -55,7 +57,7 @@ router.get('/table/clear/:tableName', async (req: Request, res: Response) => {
  * post table data
  * TODO: get rid of update
  * */
-router.post('/table/update/:tableName', cors(),  async (req: Request, res: Response) => {
+router.post('/table/update/:tableName',  async (req: Request, res: Response) => {
   const tableName: string = req.params.tableName
   let tableData: any
 
