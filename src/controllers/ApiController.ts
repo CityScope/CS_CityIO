@@ -1,5 +1,5 @@
 import axios, { AxiosError, AxiosResponse } from 'axios'
-import { Request, Response, Router } from 'express'
+import { next, Request, Response, Router } from 'express'
 import { baseURL } from '../config/constants'
 import { html } from '../helpers/html'
 import { tableManager } from '../index'
@@ -38,12 +38,29 @@ router.get('/table/:tableName', async (req: Request, res: Response) => {
 })
 
 /*
+ * clear table data
+ * */
+router.get('/table/clear/:tableName', async (req: Request, res: Response) => {
+  const tableName: string = req.params.tableName
+  await tableManager.clearTable(tableName)
+  res.jsonp(`cleared ${tableName}`)
+})
+
+/*
+ * POST resuests
+ */
+
+router.all('*', async (req: Request, res: Response) => {
+  res.header('Access-Control-Allow-Origin', '*')
+  res.header('Access-Control-Allow-Headers', 'X-Requested-With')
+  next()
+})
+
+/*
  * post table data
  * TODO: get rid of update
  * */
 router.post('/table/update/:tableName', async (req: Request, res: Response) => {
-  res.header('Access-Control-Allow-Origin', '*')
-  res.header('Access-Control-Allow-Origin', 'Origin, X-Requested-With, Content-Type, Accept')
   const tableName: string = req.params.tableName
   let tableData: any
 
@@ -74,15 +91,6 @@ router.post('/table/update/:tableName', async (req: Request, res: Response) => {
   const newTable: ITable = await tableManager.addTable(tableName, formattedTableData)
 
   res.jsonp(newTable)
-})
-
-/*
- * clear table data
- * */
-router.get('/table/clear/:tableName', async (req: Request, res: Response) => {
-  const tableName: string = req.params.tableName
-  await tableManager.clearTable(tableName)
-  res.jsonp(`cleared ${tableName}`)
 })
 
 export const ApiController: Router = router
