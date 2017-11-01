@@ -28,8 +28,8 @@ class Grid {
       
   }
   
-  void addBlock(PVector _location, int _blockSize, int _id, int _data){ 
-    blocks.add(new Block(_location, _blockSize, _id, _data));     
+  void addBlock(PVector _location, int _blockSize, int _id){ 
+    blocks.add(new Block(_location, _blockSize, _id));     
   }
   
 

@@ -33,16 +33,13 @@ class PlayGround {
   }
   void updateGridJSON(){
     JSONArray gridsA = jsonCityIO.getJSONArray("grid");
-    print("size ");
-    println(gridsA.size());
     for(int i=0; i < gridsA.size(); i++) {
       JSONObject grid =  gridsA.getJSONObject(i);
       int rot = grid.getInt("rot");
       int type = grid.getInt("type");
       int x = grid.getInt("x");
       int y = grid.getInt("y");
-      int magnitude = grid.getInt("magnitude");
-      grids.get(0).addBlock(new PVector(15-x, y), 20, type,magnitude);    
+      grids.get(0).addBlock(new PVector(15-x, y), 20, type);    
     }
   }
 }

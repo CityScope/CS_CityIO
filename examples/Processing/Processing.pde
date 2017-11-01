@@ -6,6 +6,7 @@ public int playGroundWidth = 500;
 public int playGroundHeight = 500;
 
 JSONObject jsonCityIO = new JSONObject();
+String url= "https://cityio.media.mit.edu/api/table/citymatrix_volpe";
 
 PlayGround myPlayGround;
 Keystone ks;
@@ -19,7 +20,7 @@ void setup() {
   surface = ks.createCornerPinSurface(playGroundWidth,playGroundHeight,50); 
   offscreen = createGraphics(displayWidth, displayHeight, P2D);
   myPlayGround = new PlayGround(new PVector(playGroundWidth/2,playGroundHeight/2), playGroundWidth,playGroundWidth);
-  jsonCityIO = loadJSONObject("http://cityscope.media.mit.edu/citymatrix.json");//.getJSONArray("grid");
+  jsonCityIO = loadJSONObject(url);//.getJSONArray("grid");
   isGridHasChanged = true;
 }
  
@@ -27,7 +28,7 @@ void draw() {
   background(255);
   offscreen.beginDraw();
   if (frameCount % 30 == 0){
-    jsonCityIO = loadJSONObject("http://cityscope.media.mit.edu/citymatrix.json");
+    jsonCityIO = loadJSONObject(url);
     isGridHasChanged = true;
   } 
   offscreen.clear();

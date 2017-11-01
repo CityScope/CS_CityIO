@@ -2,13 +2,11 @@ class Block {
   PVector location;
   int size;
   int id;
-  int data;
 
-  Block(PVector l, int _size, int _id, int _data) {
+  Block(PVector l, int _size, int _id) {
     location = l;//.copy();
     size = _size;
     id= _id;
-    data= _data;
   }
  
   void run(){
