@@ -1,4 +1,5 @@
 import axios, { AxiosError, AxiosResponse } from 'axios'
+import * as cors from 'cors'
 import { next, Request, Response, Router } from 'express'
 import { baseURL } from '../config/constants'
 import { html } from '../helpers/html'
@@ -50,17 +51,11 @@ router.get('/table/clear/:tableName', async (req: Request, res: Response) => {
  * POST resuests
  */
 
-router.all('*', async (req: Request, res: Response) => {
-  res.header('Access-Control-Allow-Origin', '*')
-  res.header('Access-Control-Allow-Headers', 'X-Requested-With')
-  next()
-})
-
 /*
  * post table data
  * TODO: get rid of update
  * */
-router.post('/table/update/:tableName', async (req: Request, res: Response) => {
+router.post('/table/update/:tableName', cors(),  async (req: Request, res: Response) => {
   const tableName: string = req.params.tableName
   let tableData: any
 

@@ -23,6 +23,7 @@
     "@types/node": "^7.0.22",
     "axios": "^0.16.1",
     "body-parser": "^1.17.2",
+    "cors": "^2.8.4",
     "deep-equal": "^1.0.1",
     "express": "^4.15.3",
     "firebase-admin": "^5.0.0"
