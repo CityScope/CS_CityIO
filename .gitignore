@@ -4,3 +4,4 @@ node_modules/
 
 firebase_credentials.json
 
+test/big_fat.json

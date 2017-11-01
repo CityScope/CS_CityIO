@@ -42,6 +42,8 @@ router.get('/table/:tableName', async (req: Request, res: Response) => {
  * TODO: get rid of update
  * */
 router.post('/table/update/:tableName', async (req: Request, res: Response) => {
+  res.header('Access-Control-Allow-Origin', '*')
+  res.header('Access-Control-Allow-Origin', 'Origin, X-Requested-With, Content-Type, Accept')
   const tableName: string = req.params.tableName
   let tableData: any
 
