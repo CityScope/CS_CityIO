@@ -7,7 +7,7 @@ import { tableManager } from '../index'
 import TableManager, { emptyTable, ITable } from '../models/TableManager'
 const router: Router = Router()
 
-router.use(cors())
+// router.use(cors())
 
 /*
  * get table name
@@ -61,6 +61,7 @@ router.post('/table/update/:tableName',  async (req: Request, res: Response) => 
   const tableName: string = req.params.tableName
   let tableData: any
 
+  console.log(res)
   switch (req.headers['content-type']) {
     case 'application/json' :
       tableData = req.body
