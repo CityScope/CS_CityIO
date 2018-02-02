@@ -10,7 +10,7 @@ model CityIOGAMA
 global {
 	
 	geometry shape <- square(1 #km);
-	string cityIOurl <-"https://cityio.media.mit.edu/api/table/citymatrix_volpe";
+	string cityIOurl <-"https://cityio.media.mit.edu/api/table/citymatrix";
     map<string, unknown> matrixData;
     map<int,rgb> buildingColors <-[-2::#red, -1::#orange,0::rgb(189,183,107), 1::rgb(189,183,107), 2::rgb(189,183,107),3::rgb(230,230,230), 4::rgb(230,230,230), 5::rgb(230,230,230),6::rgb(40,40,40),7::#cyan,8::#green,9::#gray];
     list<map<string, unknown>> cells;
@@ -34,7 +34,7 @@ global {
             cityMatrix cell <- cityMatrix grid_at { x, y };
             cell.type <- int(c["type"]);
         }  
-        save(json_file("https://cityio.media.mit.edu/api/table/update/gamaTableArno", matrixData));
+        save(json_file("https://cityio.media.mit.edu/api/table/update/cityIO_Gama", matrixData));
 	}
 	
 	reflex updateGrid when: ((cycle mod refresh) = 0){
