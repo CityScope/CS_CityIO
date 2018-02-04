@@ -10,10 +10,10 @@ model CityIOGAMA
 global {
 	
 	geometry shape <- square(1 #km);
-	string cityIOurl <-"https://cityio.media.mit.edu/api/table/citymatrix";
+	string cityIOurl <-"https://cityio.media.mit.edu/api/table/citymatrix_template";
     map<string, unknown> matrixData;
     map<int,rgb> buildingColors <-[-2::#red, -1::#orange,0::rgb(189,183,107), 1::rgb(189,183,107), 2::rgb(189,183,107),3::rgb(230,230,230), 4::rgb(230,230,230), 5::rgb(230,230,230),6::rgb(40,40,40),7::#cyan,8::#green,9::#gray];
-    list<map<string, unknown>> cells;
+    list<string> cells;
     map<string, unknown> objects;
 	list<float> density_array;
 	int refresh <- 100 min: 1 max:1000 parameter: "Refresh rate (cycle):" category: "Grid";
@@ -21,20 +21,20 @@ global {
 	
 	init {
         do initGrid;
-        
 	}
 	
 	action initGrid{
 		matrixData <- json_file(cityIOurl).contents;
 		cells <- matrixData["grid"];
+		write cells;
 		density_array <- matrixData["objects"]["density"];
 		loop c over: cells {
-			int x <- int(c["x"]);
-			int y <- int(c["y"]);
-            cityMatrix cell <- cityMatrix grid_at { x, y };
-            cell.type <- int(c["type"]);
+			//int x <- int(string(c[0]));
+			//int y <- int(string(c[1]));
+            //cityMatrix cell <- cityMatrix grid_at { x, y };
+            //cell.type <- int(c[2]);
         }  
-        save(json_file("https://cityio.media.mit.edu/api/table/update/cityIO_Gama", matrixData));
+        //save(json_file("https://cityio.media.mit.edu/api/table/update/cityIO_Gama", matrixData));
 	}
 	
 	reflex updateGrid when: ((cycle mod refresh) = 0){
