@@ -2,6 +2,19 @@
 
 node_modules/
 
-firebase_credentials.json
 
-test/big_fat.json
+/.venv
+*.pyc
+__pycache__/
+.cache
+pipenv.egg-info/
+*.swp
+.sublime-text-git-autocommit
+docs/_build
+dist
+build
+.DS_Store
+test_project
+Pipfile.lock
+/.vscode/
+.idea
