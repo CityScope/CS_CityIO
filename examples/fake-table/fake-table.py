@@ -8,14 +8,12 @@ url = '{}table/update/{}'.format(base_url, table.header['spatial']['name'])
 scheduled  = sched.scheduler(time.time, time.sleep)
 
 def update(sc):
+    table.makeFakeGrid()
     table.update()
     requests.post(url, json = table.toDict())
-    print('updated table')
+    print('updated fake table')
     scheduled.enter(60, 1, update, (sc,))
 
 scheduled.enter(60, 1, update, (scheduled,))
-
 scheduled.run()
-
-
 
