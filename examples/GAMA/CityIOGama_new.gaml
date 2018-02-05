@@ -13,9 +13,8 @@ global {
 	string cityIOurl <-"https://cityio.media.mit.edu/api/table/citymatrix_template";
     map<string, unknown> matrixData;
     map<int,rgb> buildingColors <-[-2::#red, -1::#orange,0::rgb(189,183,107), 1::rgb(189,183,107), 2::rgb(189,183,107),3::rgb(230,230,230), 4::rgb(230,230,230), 5::rgb(230,230,230),6::rgb(40,40,40),7::#cyan,8::#green,9::#gray];
-    list<string> cells;
+    list<list<float>> cells;
     map<string, unknown> objects;
-	list<float> density_array;
 	int refresh <- 100 min: 1 max:1000 parameter: "Refresh rate (cycle):" category: "Grid";
 	int matrix_size <- 16;
 	
@@ -26,13 +25,13 @@ global {
 	action initGrid{
 		matrixData <- json_file(cityIOurl).contents;
 		cells <- matrixData["grid"];
-		write cells;
-		density_array <- matrixData["objects"]["density"];
+		objects <- matrixData["objects"];
 		loop c over: cells {
-			//int x <- int(string(c[0]));
-			//int y <- int(string(c[1]));
-            //cityMatrix cell <- cityMatrix grid_at { x, y };
-            //cell.type <- int(c[2]);
+			int x <- int(c[0]);
+			int y <- int(c[1]);
+            cityMatrix cell <- cityMatrix grid_at { x, y };
+            cell.type <- int(c[3]);
+            cell.depth<-int(c[4]);
         }  
         //save(json_file("https://cityio.media.mit.edu/api/table/update/cityIO_Gama", matrixData));
 	}
@@ -44,15 +43,16 @@ global {
 
 grid cityMatrix width:matrix_size height:matrix_size {
 	int type;
+	int depth;
     aspect base{
-	  draw shape color:buildingColors[type] border:#black;
-	  draw string(type) color:#black border:#black;		
+	  draw shape color:buildingColors[type] depth:depth;
+	  draw string(type) color:#black border:#black at:{location.x,location.y,depth+1};		
 	}
 }
 
 experiment Display  type: gui {
 	output {	
-		display cityMatrixView   background:#black {
+		display cityMatrixView  type:opengl  background:#black {
 			species cityMatrix aspect:base;
 		}
 	}
