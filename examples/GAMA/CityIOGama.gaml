@@ -5,7 +5,7 @@ model CityIOGAMA
 global {
 
 	geometry shape <- square(1 #km);
- 	string cityIOurl <-"https://cityio.media.mit.edu/api/table/fake_table";
+ 	string cityIOurl <-"https://cityio.media.mit.edu/api/table/virtual_table";
     map<string, unknown> matrixData;
     map<int,rgb> buildingColors <-[-2::#red, -1::#orange,0::rgb(189,183,107), 1::rgb(189,183,107), 2::rgb(189,183,107),3::rgb(230,230,230), 4::rgb(230,230,230), 5::rgb(230,230,230),6::rgb(40,40,40),7::#cyan,8::#green,9::#gray];
     map<string, unknown> header;
@@ -20,8 +20,8 @@ global {
 	action initGrid{
         matrixData <- json_file(cityIOurl).contents;
 		spatial <-matrixData["header"]["spatial"];
-		loop i from: 0 to: (int(spatial["col"]) -1) {
-			loop j from: 0 to: (int(spatial["row"]) -1){
+		loop i from: 0 to: (int(spatial["ncols"]) -1) {
+			loop j from: 0 to: (int(spatial["nrows"]) -1){
 				cityMatrix cell <- cityMatrix grid_at { i, j };
 				cell.type<-int(matrixData["grid"][i+j*i][1]);
 				cell.depth<-int(matrixData["grid"][i+j*i][2]);
@@ -52,8 +52,8 @@ grid cityMatrix width:matrix_size height:matrix_size {
 
 experiment Display  type: gui {
 	action _init_ {
-   		map<string, unknown> data <- json_file("https://cityio.media.mit.edu/api/table/fake_table").contents;
-		create CityIOGAMA_model with: [matrix_size::int(data["header"]["spatial"]["col"]), matrixData::data];
+   		map<string, unknown> data <- json_file("https://cityio.media.mit.edu/api/table/virtual_table").contents;
+		create CityIOGAMA_model with: [matrix_size::int(data["header"]["spatial"]["ncols"]), matrixData::data];
 	}
 
 	output {	
