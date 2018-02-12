@@ -11,7 +11,8 @@ global {
     map<string, unknown> header;
     map<string, unknown> spatial;
 	int refresh <- 100 min: 1 max:1000 parameter: "Refresh Grid rate (cycle):" category: "Grid";
-	int matrix_size  ;
+	int nbCols;
+	int nbRows;
 
 	init {
 	 do initGrid;
@@ -20,11 +21,11 @@ global {
 	action initGrid{
         matrixData <- json_file(cityIOurl).contents;
 		spatial <-matrixData["header"]["spatial"];
-		loop i from: 0 to: (int(spatial["ncols"]) -1) {
-			loop j from: 0 to: (int(spatial["nrows"]) -1){
+		loop i from: 0 to: nbCols-1 {
+			loop j from: 0 to: nbRows -1{
 				cityMatrix cell <- cityMatrix grid_at { i, j };
-				cell.type<-int(matrixData["grid"][i+j*i][1]);
-				cell.depth<-int(matrixData["grid"][i+j*i][2]);
+				cell.type<-int(matrixData["grid"][j*nbCols+i][0]);
+				cell.depth<-int(matrixData["grid"][j*nbCols+i][1]);
 			}
         }  
 	}
@@ -38,7 +39,7 @@ global {
  	}
 }
 
-grid cityMatrix width:matrix_size height:matrix_size {
+grid cityMatrix width:nbCols height:nbRows {
 	int size;
 	int type;
 	int depth;
@@ -46,14 +47,13 @@ grid cityMatrix width:matrix_size height:matrix_size {
 	  draw shape color:buildingColors[type] depth:depth;
 	  draw string(type) color:#black border:#black at:{location.x,location.y,depth+1};		
 	}
-
 }
 
 
 experiment Display  type: gui {
 	action _init_ {
    		map<string, unknown> data <- json_file("https://cityio.media.mit.edu/api/table/virtual_table").contents;
-		create CityIOGAMA_model with: [matrix_size::int(data["header"]["spatial"]["ncols"]), matrixData::data];
+		create CityIOGAMA_model with: [nbCols::int(data["header"]["spatial"]["ncols"]), nbRows::int(data["header"]["spatial"]["nrows"]),matrixData::data];
 	}
 
 	output {	
