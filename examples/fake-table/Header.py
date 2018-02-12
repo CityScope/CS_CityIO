@@ -6,7 +6,7 @@ from Mapping import Mapping
 class Header:
 
     rotations = [0, 90, 180, 270]
-    block = ['rotation', 'height', 'type']
+    block = ['type', 'height', 'rotation']
 
     def __init__(self, name='virtual_table'):
         self.name = name
@@ -26,9 +26,9 @@ class Header:
     def makeFakeCell(self):
         cell = []
 
-        cell.append(choice(Header.rotations))
-        cell.append(randrange(10))
         cell.append(self.mapping.randtype())
+        cell.append(randrange(10))  # height
+        cell.append(choice(Header.rotations))
 
         return cell
 
