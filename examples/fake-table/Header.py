@@ -1,6 +1,7 @@
 from random import choice, randrange
 from Spatial import Spatial
 from Mapping import Mapping
+from Owner import Owner
 
 
 class Header:
@@ -13,11 +14,13 @@ class Header:
         self.spatial = Spatial()
         self.block = Header.block
         self.mapping = Mapping()
+        self.owner = Owner()
 
     def __iter__(self):
         yield('name', self.name)
         yield('spatial', dict(self.spatial))
         yield('block', self.block)
+        yield('owner', dict(self.owner))
         yield('mapping', dict(self.mapping))
 
     def totalCellNum(self):
