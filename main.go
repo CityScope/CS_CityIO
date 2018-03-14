@@ -1,36 +1,71 @@
 package main
 
 import (
+	// "encoding/json"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
+
+	"github.com/CityScope/CS_CityIO_Backend/models"
+	"github.com/gin-gonic/gin"
 )
-
-var tables []string
-
-func handler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "hello, %s", r.URL.Path[1:])
-}
-
-func tableListHandler(w http.ResponseWriter, r *http.Request) {
-
-	data, _ := json.Marshal(tables)
-
-	fmt.Println(data)
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(data)
-}
 
 func main() {
 
-	tables = append(tables, "fake-table")
-	tables = append(tables, "virtual-table")
-	tables = append(tables, "dull-table")
+	router := gin.Default()
 
-	fmt.Printf("starting server")
-	http.HandleFunc("/api/table/list/", tableListHandler)
+	tables := make(map[string]interface{})
 
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	router.POST("api/table/update/:tableName", func(c *gin.Context) {
+		var data interface{}
+
+		if err := c.ShouldBindJSON(&data); err == nil {
+			// go table.UpdateTimeStamp()
+			byteData, _ := json.Marshal(data)
+
+			table := models.Table{}
+
+			err := json.Unmarshal(byteData, &table)
+
+			// if reflect.DeepEqual(table, by)
+
+			tableName := c.Param("tableName")
+			if err != nil {
+				fmt.Println(err)
+				tables[tableName] = data
+			} else {
+				table.UpdateTimeStamp()
+				tables[tableName] = table
+			}
+
+		} else {
+			fmt.Println(err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		}
+		// tableName := c.Param("tableName")
+		c.JSON(http.StatusOK, gin.H{"tableName": "done"})
+
+	})
+
+	router.GET("/api/table/:tableName", func(c *gin.Context) {
+		tableName := c.Param("tableName")
+		table, ok := tables[tableName]
+		if ok {
+			c.JSON(http.StatusOK, table)
+		} else {
+			c.JSON(http.StatusNotFound, gin.H{"status": "table not found"})
+		}
+
+	})
+
+	router.GET("api/tables/list", func(c *gin.Context) {
+		tableList := make([]string, 0, len(tables))
+		for k := range tables {
+			tableList = append(tableList, k)
+		}
+
+		c.JSON(http.StatusOK, tableList)
+	})
+
+	router.Run(":8080")
 }
