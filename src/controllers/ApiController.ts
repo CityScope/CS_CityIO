@@ -40,8 +40,8 @@ router.get('/table/:tableName', async (req: Request, res: Response) => {
   res.jsonp(table)
 })
 
-router.get('/table/list', async (req: Request, res: Response) => {
-  
+router.get('/tables/list', async (req: Request, res: Response) => {
+ 
   const links = tableManager.getList().map((tn) => {
     return `${baseURL}/api/table/${tn}`
   })
