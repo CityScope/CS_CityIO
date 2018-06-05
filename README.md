@@ -8,6 +8,10 @@ Backend for the cityscope platform.
 - serves data to clients to front end and other clients, GAMA, Grasshopper, and Processing. 
 
 
+## Data template link
+
+[data template](https://github.com/CityScope/CS_CityIO_Backend/wiki/Data-Format)
+
 ## run fake table
 
 ``` pipenv run python3 examples/fake-table/fake-table.py ```
