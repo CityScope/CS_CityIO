@@ -22,7 +22,12 @@ TableManager.loadTables()
 // api endpoints
 app.use('/api', ApiController)
 
-app.use(express.static(frontendDir))
+// app.use(express.static(frontendDir))
+
+// redirect to github pages
+app.get('/', (req, res)=>{
+	res.redirect('https://cityscope.github.io/CS_CityIO_Frontend/')
+})
 
 app.listen( PORT, () => {
 console.log(`listening to port  ${PORT}`)
