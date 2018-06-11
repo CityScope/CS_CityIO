@@ -10,6 +10,8 @@ Backend for the cityscope platform.
 
 ## Data template link
 
+You will find a sample table at ```examples/virtual_table.json``` folder.
+
 [data template](https://github.com/CityScope/CS_CityIO_Backend/wiki/Data-Format)
 
 ## run fake table
