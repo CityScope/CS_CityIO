@@ -12,6 +12,7 @@ Backend for the cityscope platform.
 
 You will find a sample table at ```examples/virtual_table.json``` folder.
 
+[direct link to virtual_table](https://cityio.media.mit.edu/api/table/virtual_table)
 [data template](https://github.com/CityScope/CS_CityIO_Backend/wiki/Data-Format)
 
 ## run fake table
