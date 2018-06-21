@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.github.CS_CiyIO_Backend.plist</string> <!-- org.mongodb.mongodb perhaps? -->
+
+    <key>OnDemand</key>
+    <false/>
+
+    <key>UserName</key>
+    <string>yasushi</string>
+
+    <key>GroupName</key>
+    <string>staff</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/usr/local/bin/node</string>
+      <string>/Users/yasushi/code/cityio/dist/index.js</string>
+    </array>
+</dict>
+</plist>
