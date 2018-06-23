@@ -6,17 +6,20 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/CityScope/CS_CityIO_Backend/models"
+	// "github.com/CityScope/CS_CityIO_Backend/models"
+	"github.com/CityScope/cityio/models"
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
 
+	prefix := "/new"
+
 	router := gin.Default()
 
 	tables := make(map[string]interface{})
 
-	router.POST("api/table/update/:tableName", func(c *gin.Context) {
+	router.POST(prefix+"/api/table/update/:tableName", func(c *gin.Context) {
 		var data interface{}
 
 		if err := c.ShouldBindJSON(&data); err == nil {
@@ -47,7 +50,7 @@ func main() {
 
 	})
 
-	router.GET("/api/table/:tableName", func(c *gin.Context) {
+	router.GET(prefix+"/api/table/:tableName", func(c *gin.Context) {
 		tableName := c.Param("tableName")
 		table, ok := tables[tableName]
 		if ok {
@@ -58,7 +61,7 @@ func main() {
 
 	})
 
-	router.GET("api/tables/list", func(c *gin.Context) {
+	router.GET(prefix+"/api/tables/list", func(c *gin.Context) {
 		tableList := make([]string, 0, len(tables))
 		for k := range tables {
 			tableList = append(tableList, k)
@@ -67,5 +70,5 @@ func main() {
 		c.JSON(http.StatusOK, tableList)
 	})
 
-	router.Run(":8080")
+	router.Run(":8081")
 }
