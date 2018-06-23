@@ -1,24 +1,21 @@
 package main
 
 import (
-	// "encoding/json"
 	"encoding/json"
 	"fmt"
 	"net/http"
 
-	// "github.com/CityScope/CS_CityIO_Backend/models"
-	"github.com/CityScope/cityio/models"
+	"github.com/CityScope/CS_CityIO_Backend/models"
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
 
-	prefix := "/new"
-
+	prefix := "/dev"
 	router := gin.Default()
-
 	tables := make(map[string]interface{})
 
+	///////////////////////////////////////
 	router.POST(prefix+"/api/table/update/:tableName", func(c *gin.Context) {
 		var data interface{}
 
@@ -50,6 +47,7 @@ func main() {
 
 	})
 
+	///////////////////////////////////////
 	router.GET(prefix+"/api/table/:tableName", func(c *gin.Context) {
 		tableName := c.Param("tableName")
 		table, ok := tables[tableName]
@@ -58,9 +56,18 @@ func main() {
 		} else {
 			c.JSON(http.StatusNotFound, gin.H{"status": "table not found"})
 		}
-
 	})
 
+	///////////////////////////////////////
+	router.GET(prefix+"/api/table/clear/:tableName", func(c *gin.Context) {
+		tableName := c.Param("tableName")
+
+		//TODO: do we want to delete it? perhaps inactivate it?
+		delete(tables, tableName)
+		c.JSON(http.StatusOK, "deleted "+tableName+".")
+	})
+
+	///////////////////////////////////////
 	router.GET(prefix+"/api/tables/list", func(c *gin.Context) {
 		tableList := make([]string, 0, len(tables))
 		for k := range tables {
