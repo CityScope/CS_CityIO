@@ -70,8 +70,9 @@ func main() {
 	///////////////////////////////////////
 	router.GET(prefix+"/tables/list", func(c echo.Context) error {
 		tableList := make([]string, 0, len(tables))
+		baseUrl := "https://cityio.media.mit.edu/api/table/"
 		for k := range tables {
-			tableList = append(tableList, k)
+			tableList = append(tableList, baseUrl+k)
 		}
 		return c.JSON(http.StatusOK, tableList)
 	})
