@@ -11,12 +11,12 @@ import (
 
 func main() {
 
-	prefix := "/dev"
+	prefix := "/api"
 	router := echo.New()
 	tables := make(map[string]interface{})
 
 	///////////////////////////////////////
-	router.POST(prefix+"/api/table/update/:tableName", func(c echo.Context) error {
+	router.POST(prefix+"/table/update/:tableName", func(c echo.Context) error {
 		data := make(map[string]interface{})
 		tableName := c.Param("tableName")
 
@@ -46,7 +46,7 @@ func main() {
 	})
 
 	///////////////////////////////////////
-	router.GET(prefix+"/api/table/clear/:tableName", func(c echo.Context) error {
+	router.GET(prefix+"/table/clear/:tableName", func(c echo.Context) error {
 		tableName := c.Param("tableName")
 
 		//TODO: do we want to delete it? perhaps inactivate it?
@@ -56,7 +56,7 @@ func main() {
 	})
 
 	///////////////////////////////////////
-	router.GET(prefix+"/api/table/:tableName", func(c echo.Context) error {
+	router.GET(prefix+"/table/:tableName", func(c echo.Context) error {
 		tableName := c.Param("tableName")
 		table, ok := tables[tableName]
 		if ok {
@@ -68,7 +68,7 @@ func main() {
 	})
 
 	///////////////////////////////////////
-	router.GET(prefix+"/api/tables/list", func(c echo.Context) error {
+	router.GET(prefix+"/tables/list", func(c echo.Context) error {
 		tableList := make([]string, 0, len(tables))
 		for k := range tables {
 			tableList = append(tableList, k)
