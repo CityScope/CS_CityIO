@@ -2,11 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"log"
+	"net/http"
+
 	"github.com/CityScope/CS_CityIO_Backend/models"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
-	"log"
-	"net/http"
 )
 
 func main() {
@@ -14,11 +15,12 @@ func main() {
 	prefix := "/api"
 	router := echo.New()
 	router.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"https://cityio.media.mit.edu", "https://github.com", "http://cityscope.media.mit.edu"},
+		AllowOrigins: []string{"*"},
 		AllowHeaders: []string{
 			echo.HeaderOrigin,
 			echo.HeaderContentType,
 			echo.HeaderAccept},
+		AllowMethods: []string{echo.GET, echo.POST},
 	}))
 	tables := make(map[string]interface{})
 
