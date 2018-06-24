@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/CityScope/CS_CityIO_Backend/models"
 	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
 	"log"
 	"net/http"
 )
@@ -12,6 +13,13 @@ func main() {
 	port := "8080"
 	prefix := "/api"
 	router := echo.New()
+	router.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"https://cityio.media.mit.edu", "https://github.com", "http://cityscope.media.mit.edu"},
+		AllowHeaders: []string{
+			echo.HeaderOrigin,
+			echo.HeaderContentType,
+			echo.HeaderAccept},
+	}))
 	tables := make(map[string]interface{})
 
 	///////////////////////////////////////

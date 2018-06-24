@@ -3,12 +3,12 @@ import sched
 from requests import post
 from Table import Table
 
-# base_url = 'https://cityio.media.mit.edu/'
-base_url = 'http://localhost:8081/'
+base_url = 'https://cityio.media.mit.edu/'
+# base_url = 'http://localhost:8080/'
 
 table = Table()
 
-url = '{}dev/api/table/update/{}'.format(base_url, table.header.name)
+url = '{}api/table/update/{}'.format(base_url, table.header.name)
 
 scheduled = sched.scheduler(time.time, time.sleep)
 
