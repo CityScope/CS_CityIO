@@ -2,80 +2,79 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/CityScope/CS_CityIO_Backend/models"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo"
 )
 
 func main() {
 
 	prefix := "/dev"
-	router := gin.Default()
+	router := echo.New()
 	tables := make(map[string]interface{})
 
 	///////////////////////////////////////
-	router.POST(prefix+"/api/table/update/:tableName", func(c *gin.Context) {
-		var data interface{}
-
-		if err := c.ShouldBindJSON(&data); err == nil {
-			// go table.UpdateTimeStamp()
-			byteData, _ := json.Marshal(data)
-
-			table := models.Table{}
-
-			err := json.Unmarshal(byteData, &table)
-
-			// if reflect.DeepEqual(table, by)
-
-			tableName := c.Param("tableName")
-			if err != nil {
-				fmt.Println(err)
-				tables[tableName] = data
-			} else {
-				table.UpdateTimeStamp()
-				tables[tableName] = table
-			}
-
-		} else {
-			fmt.Println(err)
-			c.JSON(http.StatusBadRequest, gin.H{"error": err})
-		}
-		// tableName := c.Param("tableName")
-		c.JSON(http.StatusOK, gin.H{"tableName": "done"})
-
-	})
-
-	///////////////////////////////////////
-	router.GET(prefix+"/api/table/:tableName", func(c *gin.Context) {
+	router.POST(prefix+"/api/table/update/:tableName", func(c echo.Context) error {
+		data := make(map[string]interface{})
 		tableName := c.Param("tableName")
-		table, ok := tables[tableName]
-		if ok {
-			c.JSON(http.StatusOK, table)
-		} else {
-			c.JSON(http.StatusNotFound, gin.H{"status": "table not found"})
+
+		err := json.NewDecoder(c.Request().Body).Decode(&data)
+
+		if err != nil {
+			log.Printf("error: %v\n", err.Error())
 		}
+
+		byteData, _ := json.Marshal(data)
+
+		table := models.Table{}
+
+		err = json.Unmarshal(byteData, &table)
+		if err != nil {
+			log.Printf("[%v]: unvalid: %v\n", tableName, err.Error())
+			tables[tableName] = data
+		} else {
+			log.Printf("[%v]: valid type \n", tableName)
+			table.UpdateTimeStamp()
+			tables[tableName] = table
+		}
+
+		return c.JSON(http.StatusOK,
+			map[string]string{"tableName": "done"})
+
 	})
 
 	///////////////////////////////////////
-	router.GET(prefix+"/api/table/clear/:tableName", func(c *gin.Context) {
+	router.GET(prefix+"/api/table/clear/:tableName", func(c echo.Context) error {
 		tableName := c.Param("tableName")
 
 		//TODO: do we want to delete it? perhaps inactivate it?
 		delete(tables, tableName)
-		c.JSON(http.StatusOK, "deleted "+tableName+".")
+		return c.JSON(http.StatusOK,
+			map[string]string{"status": "deleted " + tableName})
 	})
 
 	///////////////////////////////////////
-	router.GET(prefix+"/api/tables/list", func(c *gin.Context) {
+	router.GET(prefix+"/api/table/:tableName", func(c echo.Context) error {
+		tableName := c.Param("tableName")
+		table, ok := tables[tableName]
+		if ok {
+			return c.JSON(http.StatusOK, table)
+		} else {
+			return c.JSON(http.StatusNotFound,
+				map[string]string{"status": "table not found"})
+		}
+	})
+
+	///////////////////////////////////////
+	router.GET(prefix+"/api/tables/list", func(c echo.Context) error {
 		tableList := make([]string, 0, len(tables))
 		for k := range tables {
 			tableList = append(tableList, k)
 		}
-
-		c.JSON(http.StatusOK, tableList)
+		return c.JSON(http.StatusOK, tableList)
 	})
 
-	router.Run(":8081")
+	log.Fatal(router.Start(":8081"))
 }
