@@ -19,6 +19,7 @@ class Table:
         yield('grid', self.grid)
 
     def update(self):
+        self.makeFakeGrid()
         self.meta.update()
 
     def makeFakeGrid(self):

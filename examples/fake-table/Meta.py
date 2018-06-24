@@ -4,7 +4,7 @@ from random import choice, random
 
 class Meta:
     def __init__(self):
-        self.apiv = 2
+        self.apiv = '2.1.0'
         self.timestamp = int(time() * 1000)
         self.id = Meta.makeId()
 

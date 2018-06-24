@@ -18,3 +18,5 @@ test_project
 Pipfile.lock
 /.vscode/
 .idea
+
+CS_CityIO_Backend
