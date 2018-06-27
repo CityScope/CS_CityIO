@@ -2,9 +2,9 @@ class Spatial:
     def __init__(self,
                  nrows=20,
                  ncols=20,
-                 longitude=-71.087264,
+                 longitude=43.9783851,
                  physical_longitude=-71.087264,
-                 latitude=42.360357,
+                 latitude=15.381043,
                  physical_latitude=42.360357,
                  rotation=0.0,
                  cellsize=10

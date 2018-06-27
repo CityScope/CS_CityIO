@@ -39,7 +39,15 @@ func (t *Table) UpdateTimeStamp() {
 	t.Meta.Timestamp = int(time.Now().UnixNano() / 1000000)
 }
 
-func (m *Meta) Hash(data string) {
+func (t *Table) QualifyTableData() {
+	t.UpdateTimeStamp()
+	t.Meta.Apiv = "2.1.0"
+	t.HashData()
+}
+
+func (m *Meta) HashData(data string) {
+	headerM := json.Marshall(t.Header)
+
 	hash := sha256.Sum256([]byte(data))
 	m.Id = fmt.Sprintf("%64x", hash)
 }
