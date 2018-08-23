@@ -7,6 +7,8 @@ Backend for the cityscope platform.
 - gets data from the tangible interfaces
 - serves data to clients to front end and other clients, GAMA, Grasshopper, and Processing. 
 
+## when it dies
+[how to recover](https://github.com/CityScope/CS_CityIO_Backend/wiki/how-to-reboot-the-server)
 
 ## Data template link
 
