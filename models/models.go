@@ -2,6 +2,7 @@ package models
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -42,13 +43,14 @@ func (t *Table) UpdateTimeStamp() {
 func (t *Table) QualifyTableData() {
 	t.UpdateTimeStamp()
 	t.Meta.Apiv = "2.1.0"
-	t.HashData()
+	t.Meta.HashData(t.Grid)
 }
 
-func (m *Meta) HashData(data string) {
-	headerM := json.Marshall(t.Header)
+func (m *Meta) HashData(data interface{}) {
 
-	hash := sha256.Sum256([]byte(data))
+	bytes, _ := json.Marshal(data)
+
+	hash := sha256.Sum256(bytes)
 	m.Id = fmt.Sprintf("%64x", hash)
 }
 

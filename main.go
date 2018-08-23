@@ -45,11 +45,12 @@ func main() {
 
 		err = json.Unmarshal(byteData, &table)
 		if err != nil {
-			log.Printf("[%v]: unvalid: %v\n", tableName, err.Error())
+			log.Printf("[%v]: invalid type: %v\n", tableName, err.Error())
 			tables[tableName] = data
 		} else {
 			log.Printf("[%v]: valid type \n", tableName)
 			table.UpdateTimeStamp()
+			table.QualifyTableData()
 			tables[tableName] = table
 		}
 
