@@ -22,5 +22,5 @@ You will find a sample table at ```examples/virtual_table.json``` folder.
 ``` pipenv run python3 examples/fake-table/fake-table.py ```
 
 
-![](http://moviemezzanine.com/wp-content/uploads/laputa-header-1140x634.jpg)
-image credit: from the movie [Castle in the sky](https://en.wikipedia.org/wiki/Castle_in_the_Sky) by [Studio Ghibli](http://www.ghibli.jp/)
+
+![](https://user-images.githubusercontent.com/1502180/44735876-a514a500-aabb-11e8-8f36-f22e5e653ec0.jpeg)
