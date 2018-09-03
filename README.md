@@ -1,5 +1,8 @@
 # cityio server
 
+![](https://user-images.githubusercontent.com/1502180/44991948-cc5bee00-af63-11e8-89ed-e0af00bae0b6.png)
+
+
 ## see [wiki](https://github.com/CityScope/CS_CityIO_backend/wiki) for details.
 
 Backend for the cityscope platform.
@@ -20,7 +23,3 @@ You will find a sample table at ```examples/virtual_table.json``` folder.
 ## run fake table
 
 ``` pipenv run python3 examples/fake-table/fake-table.py ```
-
-
-
-![](https://user-images.githubusercontent.com/1502180/44735876-a514a500-aabb-11e8-8f36-f22e5e653ec0.jpeg)
