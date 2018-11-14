@@ -80,9 +80,22 @@ func main() {
 			tables[tableName] = data
 		} else {
 			log.Printf("[%v]: valid type \n", tableName)
-			table.UpdateTimeStamp()
-			table.QualifyTableData()
-			tables[tableName] = table
+
+			hash := table.Hash()
+			update := true
+
+			// don't update when the hash is the same
+			if lastTable, ok := tables[tableName]; ok {
+				lt, yep := lastTable.(models.Table)
+				if yep && hash == lt.Meta.Id {
+					update = false
+				}
+			}
+
+			if update {
+				table.Qualify(hash)
+				tables[tableName] = table
+			}
 		}
 
 		logger.Info("POST SUCCESS")

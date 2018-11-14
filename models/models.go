@@ -40,18 +40,20 @@ func (t *Table) UpdateTimeStamp() {
 	t.Meta.Timestamp = int(time.Now().UnixNano() / 1000000)
 }
 
-func (t *Table) QualifyTableData() {
+func (t *Table) Qualify(hash string) {
 	t.UpdateTimeStamp()
 	t.Meta.Apiv = "2.1.0"
-	t.Meta.HashData(t.Grid)
+	t.Meta.Id = hash
 }
 
-func (m *Meta) HashData(data interface{}) {
-
-	bytes, _ := json.Marshal(data)
-
-	hash := sha256.Sum256(bytes)
-	m.Id = fmt.Sprintf("%64x", hash)
+// hash of the Grid, Header, Objects
+func (t *Table) Hash() string {
+	headerBytes, _ := json.Marshal(t.Header)
+	gridBytes, _ := json.Marshal(t.Grid)
+	objectsBytes, _ := json.Marshal(t.Objects)
+	bytes := append(append(headerBytes[:], gridBytes[:]...), objectsBytes[:]...)
+	hashed := sha256.Sum256(bytes)
+	return fmt.Sprintf("%64x", hashed)
 }
 
 // Header has info that is unlikely to chage
