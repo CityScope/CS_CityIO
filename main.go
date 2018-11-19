@@ -17,14 +17,11 @@ import (
 var port string = "8080"
 var prefix string = "/api"
 
-
-var tables map[string]interface{}
-
-
+var tables map[string]interface{} = make(map[string]interface{})
 
 // GET "/"
 func getFrontend(c echo.Context) error {
-	logger.Info("GETfrontend")
+	logger.Info("GET frontend")
 	return c.Redirect(http.StatusMovedPermanently, "http://cityscope.media.mit.edu/CS_CityIO_Frontend/")
 }
 
@@ -64,7 +61,7 @@ func getTable(c echo.Context) error {
 // GET "api/table/clear/:tableName"
 func clearTable(c echo.Context) error {
 	tableName := c.Param("tableName")
-	logger.Infof("GET /table/clear%v", tableName)
+	logger.Infof("GET /table/clear/%v", tableName)
 	//TODO: do we want to delete it? perhaps inactivate it?
 	delete(tables, tableName)
 	return c.JSON(http.StatusOK,
@@ -73,6 +70,7 @@ func clearTable(c echo.Context) error {
 
 // POST "api/table/update/:tableName"
 func postTable(c echo.Context) error {
+
 	data := make(map[string]interface{})
 	tableName := c.Param("tableName")
 	logger.Infof("POST /table/update/%v", tableName)
@@ -114,10 +112,8 @@ func postTable(c echo.Context) error {
 
 	logger.Info("POST SUCCESS")
 	return c.JSON(http.StatusOK,
-		map[string]string{"tableName": "done"})
-
+		map[string]string{tableName: "done"})
 }
-
 
 func main() {
 
@@ -136,8 +132,8 @@ func main() {
 	if err != nil {
 		logger.Fatalf("Failed to open log file: %v", err)
 	}
-	defer lf.Close()
 
+	defer lf.Close()
 	defer logger.Init("Logger", false, false, lf).Close()
 
 	//////////////////////////////////////////////
@@ -155,7 +151,6 @@ func main() {
 		AllowMethods: []string{echo.GET, echo.POST},
 	}))
 
-
 	// Frontend redirects to city IO frontend
 	router.GET("/", getFrontend)
 
@@ -164,9 +159,9 @@ func main() {
 	router.GET(prefix, getAPI)
 
 	router.POST(prefix+"/table/update/:tableName", postTable)
-	
+
 	router.GET(prefix+"/table/clear/:tableName", clearTable)
-	
+
 	router.GET(prefix+"/table/:tableName", getTable)
 
 	router.GET(prefix+"/tables/list", listTables)

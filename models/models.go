@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"time"
 )
 
@@ -13,14 +14,6 @@ type Table struct {
 	Header  Header      `json:"header"`
 	Grid    []Cell      `json:"grid"`
 	Objects interface{} `json:"objects"`
-}
-
-// Meta struct
-// data will be (over) written by the server
-type Meta struct {
-	Id        string `json:"id"`
-	Timestamp int    `json:"timestamp"`
-	Apiv      string `json:"apiv"`
 }
 
 // helper to create Empty Meta data
@@ -38,6 +31,27 @@ func (t *Table) CreateEmptyMeta() {
 
 func (t *Table) UpdateTimeStamp() {
 	t.Meta.Timestamp = int(time.Now().UnixNano() / 1000000)
+}
+
+func CreateSampleTable() Table {
+	t := Table{}
+	t.CreateEmptyMeta()
+	t.Header.CreateSampleHeader()
+	for i := 0; i < 4; i++ {
+		t.Grid = append(t.Grid, CreateSampleCell())
+	}
+
+	t.Objects = "this is a sample table for testing purposes"
+
+	return t
+}
+
+// Meta struct
+// data will be (over) written by the server
+type Meta struct {
+	Id        string `json:"id"`
+	Timestamp int    `json:"timestamp"`
+	Apiv      string `json:"apiv"`
 }
 
 func (t *Table) Qualify(hash string) {
@@ -65,11 +79,34 @@ type Header struct {
 	Mapping interface{} `json:"mapping"`
 }
 
+func (h *Header) CreateSampleHeader() {
+	h.Name = "sample_table"
+	h.Spatial.CreateSampleSpatialData(2, 2)
+	h.Owner.CreateSampleOwner()
+	h.Block = []string{"type", "rot"}
+
+	m := make(map[int]string)
+	m[0] = "RS"
+	m[1] = "RM"
+	m[2] = "RL"
+	m[3] = "OS"
+	m[4] = "OM"
+	m[5] = "OL"
+
+	h.Mapping = m
+}
+
 // Owner is the info to addres the ownership
 type Owner struct {
 	Name      string `json:"name"`
 	Title     string `json:"title"`
 	Institute string `json:"institute"`
+}
+
+func (o *Owner) CreateSampleOwner() {
+	o.Name = "Yasushi Sakai"
+	o.Title = "Research Assistant"
+	o.Institute = "MIT Media Lab"
 }
 
 type Spatial struct {
@@ -83,9 +120,24 @@ type Spatial struct {
 	Rotation          float64 `json:"rotation"`
 }
 
+func (s *Spatial) CreateSampleSpatialData(r byte, c byte) {
+	s.Nrows = r
+	s.Ncols = c
+	s.PhysicalLongitude = -71.08768
+	s.PhysicalLatitude = 42.3608
+	s.Longitude = -71.08768
+	s.Latitude = 42.3608
+	s.CellSize = 10.0
+	s.Rotation = 0.0
+}
+
 // Cell is data for each grid cell, we don't
 // know what will be inside prior
 type Cell interface{}
+
+func CreateSampleCell() Cell {
+	return []int{rand.Intn(4), 90}
+}
 
 // OldTable is a table with formats before 2.0.0
 type OldTable interface{}
