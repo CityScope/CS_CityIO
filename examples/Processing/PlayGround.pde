@@ -54,7 +54,7 @@ class PlayGround {
           y++;
         }     
         //unused: int rot = grid.getInt("rot");
-        int type = gridsA.getInt(0);
+        int type = gridsA.getInt(i);
         grids.get(0).addBlock(new PVector(15-x, y), 20, type);
       }
       //else, this json is a mess
