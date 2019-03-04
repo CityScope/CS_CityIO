@@ -22,7 +22,8 @@ var tables map[string]interface{} = make(map[string]interface{})
 // GET "/"
 func getFrontend(c echo.Context) error {
 	logger.Info("GET frontend")
-	return c.Redirect(http.StatusMovedPermanently, "http://cityscope.media.mit.edu/CS_CityIO_Frontend/")
+	//return c.Redirect(http.StatusMovedPermanently, "http://cityscope.media.mit.edu/CS_CityIO_Frontend/")
+	return c.Redirect(http.StatusMovedPermanently, "http://localhost:1234") //goes to the front end settings
 }
 
 // GET "/api"
