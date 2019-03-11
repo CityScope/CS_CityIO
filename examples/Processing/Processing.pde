@@ -1,9 +1,9 @@
 import deadpixel.keystone.*;
 
-public int displayWidth = 500;
-public int displayHeight = 500;
-public int playGroundWidth = 500;
-public int playGroundHeight = 500;
+public int displayWidth = 300;
+public int displayHeight = 300;
+public int playGroundWidth = 300;
+public int playGroundHeight = 300;
 int nbCols,nbRows,cellSize;
 
 JSONObject jsonCityIO = new JSONObject();
@@ -70,5 +70,65 @@ void draw() {
         JSONArray grid =  gridsA.getJSONArray(j*nbCols+i);
         myPlayGround.grids.get(0).addBlock(new PVector(nbCols-i, j), cellSize, grid.getInt(0));
       }
+    }
+  }
+  
+  void exportGrid() {
+    JSONObject mesh = new JSONObject();
+    JSONObject meta = new JSONObject();
+    meta.setString("id", "AOpifOF");
+    meta.setFloat("timestamp", millis());
+    meta.setString("apiv", "2.1.0");
+    JSONObject header = new JSONObject();
+    header.setString("name", "cityscope_processing");
+    JSONObject spatial = new JSONObject();
+    spatial.setInt("nrows", nbRows);
+    spatial.setInt("ncols", nbCols);
+    spatial.setFloat("physical_longitude", 5);
+    spatial.setFloat("physical_latitude", 45);
+    spatial.setInt("longitude", 5);
+    spatial.setInt("latitude", 45);
+    spatial.setInt("cellSize", cellSize);
+    spatial.setInt("rotation", 0);
+    header.setJSONObject("spatial", spatial);
+    JSONObject owner = new JSONObject();
+    owner.setString("name", "Arnaud Grignard");
+    owner.setString("title", "Researcher Scientist");
+    owner.setString("institute", "MIT Media Lab");
+    header.setJSONObject("owner", owner);
+    JSONArray block = new JSONArray();
+    block.setString(1, "type");
+    block.setString(0, "rotation");
+    header.setJSONArray("block", block);
+    JSONObject type = new JSONObject();
+    JSONObject mapping = new JSONObject();
+    int j = 0;
+    /*for (int i = 0; i < config.patterns.size(); i++) {
+      type.setFloat(str(i), j);
+      j++;
+    }*/
+    mapping.setJSONObject("type", type);
+    header.setJSONObject("mapping", mapping);
+    int k = 0;
+    JSONArray grid = new JSONArray();
+    /*for (int w = 0; w < patternBlocks.size(); w++) {
+      JSONObject arrayValue = new JSONObject();
+      arrayValue.setFloat("type", patternBlocks.get(w).indexPattern);
+      arrayValue.setFloat("rotation", 0);
+      grid.setJSONObject(k, arrayValue);
+      k++;
+    }*/
+    header.setJSONArray("grid", grid);
+    mesh.setJSONObject("meta", meta);
+    mesh.setJSONObject("header", header);
+    saveJSONObject(mesh, "data/grid.json");
+    println("Grid exported.");
+  }
+  
+  void keyPressed(KeyEvent e) {
+    switch(key){
+      case 'e':
+      exportGrid();
+      break;
     }
   }

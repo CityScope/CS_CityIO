@@ -12,7 +12,6 @@ class PlayGround {
     height=h;
     grids = new ArrayList();
     grids.add(new Grid(location,nbCols,nbRows,cellSize));
-    println("initialize a grid with cols:"+  nbCols + " nbRows:" + nbRows + "cellSize" + cellSize);
   }
   
   void display(PGraphics p){
@@ -20,7 +19,7 @@ class PlayGround {
       updateGridJSON();
       isGridHasChanged = false;
     }
-    
+ 
     p.fill(255);  
     p.textSize(10);
     p.text("PlayGround",location.x-width/2,location.y-height*0.52);
