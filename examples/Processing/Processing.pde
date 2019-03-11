@@ -138,11 +138,13 @@ void draw() {
     mesh.setJSONObject("header", header);
 
     saveJSONObject(mesh, "data/grid.json");
+    println("Grid Exported Locally");
     //saveJSONObject(mesh, "https://cityio.media.mit.edu/api/table/update/cityIO_Processing");
     PostRequest post = new PostRequest("https://cityio.media.mit.edu/api/table/update/cityIO_Processing");
-    post.addData("name", "test");
+    post.addData("https://cityio.media.mit.edu/api/table/update/cityIO_Processing", mesh.toString());
     post.send();
-    println("Grid Exported");
+    println("Grid Exported to CityIO");
+    
   }
   
   void keyPressed(KeyEvent e) {
