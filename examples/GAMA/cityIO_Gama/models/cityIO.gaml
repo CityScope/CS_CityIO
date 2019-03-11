@@ -6,6 +6,7 @@ global {
 
 	geometry shape <- square(1 #km);
  	string cityIOurl <-"https://cityio.media.mit.edu/api/table/virtual_table";
+ 	string VIRTUAL_LOCAL_DATA <- "./../includes/virtual_table.json";
     map<string, unknown> matrixData;
     map<int,rgb> buildingColors <-[-2::#red, -1::#orange,0::rgb(189,183,107), 1::rgb(189,183,107), 2::rgb(189,183,107),3::rgb(230,230,230), 4::rgb(230,230,230), 5::rgb(230,230,230),6::rgb(40,40,40),7::#cyan,8::#green,9::#gray];
     map<string, unknown> header;
@@ -19,7 +20,15 @@ global {
 	}
 
 	action initGrid{
-        matrixData <- json_file(cityIOurl).contents;
+		try {
+			matrixData <- json_file(cityIOurl).contents;
+		}
+
+		catch {
+			matrixData <- json_file(VIRTUAL_LOCAL_DATA).contents;
+			write #current_error + "Connection to Internet lost or cityIO is offline - CityMatrix is a local version from cityIO_Kendall.json";
+		}
+        
 		spatial <-matrixData["header"]["spatial"];
 		loop i from: 0 to: nbCols-1 {
 			loop j from: 0 to: nbRows -1{
@@ -52,7 +61,17 @@ grid cityMatrix width:nbCols height:nbRows {
 
 experiment Display  type: gui {
 	action _init_ {
-   		map<string, unknown> data <- json_file("https://cityio.media.mit.edu/api/table/virtual_table").contents;
+   		map<string, unknown> data;// <- json_file("https://cityio.media.mit.edu/api/table/virtual_table").contents;
+   		try {
+			data <- json_file(cityIOurl).contents;
+		}
+
+		catch {
+			data <- json_file(VIRTUAL_LOCAL_DATA).contents;
+			write #current_error + "Connection to Internet lost or cityIO is offline - CityMatrix is a local version from cityIO_Kendall.json";
+		}
+   		
+   		
 		create CityIOGAMA_model with: [nbCols::int(data["header"]["spatial"]["ncols"]), nbRows::int(data["header"]["spatial"]["nrows"]),matrixData::data];
 	}
 
