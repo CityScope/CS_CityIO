@@ -138,6 +138,7 @@ void draw() {
     mesh.setJSONObject("header", header);
 
     saveJSONObject(mesh, "data/grid.json");
+    //saveJSONObject(mesh, "https://cityio.media.mit.edu/api/table/update/cityIO_Processing");
     println("Grid Exported");
   }
   
