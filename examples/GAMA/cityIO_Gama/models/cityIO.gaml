@@ -1,10 +1,15 @@
+/**
+* Name: cityIO API for GAMA
+* Author: Arnaud Grignard
+* Description: Gives the basic read and write feature for cityIO
+*/
 model CityIOGAMA
 
 
 
 global {
 
-	geometry shape <- square(1 #km);
+	//geometry shape <- square(1 #km);
  	string cityIOurl <-"https://cityio.media.mit.edu/api/table/virtual_table";
  	string VIRTUAL_LOCAL_DATA <- "./../includes/virtual_table.json";
     map<string, unknown> matrixData;
@@ -12,13 +17,15 @@ global {
     map<string, unknown> header;
     map<string, unknown> spatial;
 	int refresh <- 100 min: 1 max:1000 parameter: "Refresh Grid rate (cycle):" category: "Grid";
+	bool pushToCityIO <- false parameter: "Push to cityIO every refresh cycles" category: "Grid";
 	int nbCols;
 	int nbRows;
+	int cellSize;
 
 	init {
 	 do initGrid;
 	}
-
+    // Get a cityIO grid from a url and populate matrixData object
 	action initGrid{
 		try {
 			matrixData <- json_file(cityIOurl).contents;
@@ -45,6 +52,9 @@ global {
 
 	reflex updateGrid when: ((cycle mod refresh) = 0){
 		do initGrid;
+		if(pushToCityIO){
+		  do pushGrid(matrixData);	
+		}
  	}
 }
 
@@ -61,7 +71,7 @@ grid cityMatrix width:nbCols height:nbRows {
 
 experiment Display  type: gui {
 	action _init_ {
-   		map<string, unknown> data;// <- json_file("https://cityio.media.mit.edu/api/table/virtual_table").contents;
+   		map<string, unknown> data;
    		try {
 			data <- json_file(cityIOurl).contents;
 		}
@@ -72,7 +82,9 @@ experiment Display  type: gui {
 		}
    		
    		
-		create CityIOGAMA_model with: [nbCols::int(data["header"]["spatial"]["ncols"]), nbRows::int(data["header"]["spatial"]["nrows"]),matrixData::data];
+		create CityIOGAMA_model with: [nbCols::int(data["header"]["spatial"]["ncols"]), nbRows::int(data["header"]["spatial"]["nrows"]),cellSize::int(data["header"]["spatial"]["cellsize"]),matrixData::data]{
+			shape <-rectangle(nbCols*cellSize, nbRows*cellSize);
+		}
 	}
 
 	output {	
