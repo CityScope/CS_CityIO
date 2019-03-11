@@ -75,12 +75,15 @@ void draw() {
   
   void exportGrid() {
     JSONObject mesh = new JSONObject();
-    JSONObject meta = new JSONObject();
-    meta.setString("id", "AOpifOF");
-    meta.setFloat("timestamp", millis());
-    meta.setString("apiv", "2.1.0");
+    JSONObject metadata = new JSONObject();
+
+    metadata.setString("id", "AOpifOF");
+    metadata.setFloat("timestamp", millis());
+    metadata.setString("apiv", "2.1.0");
+
     JSONObject header = new JSONObject();
     header.setString("name", "cityscope_processing");
+
     JSONObject spatial = new JSONObject();
     spatial.setInt("nrows", nbRows);
     spatial.setInt("ncols", nbCols);
@@ -90,39 +93,52 @@ void draw() {
     spatial.setInt("latitude", 45);
     spatial.setInt("cellSize", cellSize);
     spatial.setInt("rotation", 0);
+
     header.setJSONObject("spatial", spatial);
+
     JSONObject owner = new JSONObject();
     owner.setString("name", "Arnaud Grignard");
     owner.setString("title", "Researcher Scientist");
     owner.setString("institute", "MIT Media Lab");
+    
     header.setJSONObject("owner", owner);
+
     JSONArray block = new JSONArray();
     block.setString(1, "type");
     block.setString(0, "rotation");
+
     header.setJSONArray("block", block);
+
     JSONObject type = new JSONObject();
     JSONObject mapping = new JSONObject();
-    int j = 0;
-    /*for (int i = 0; i < config.patterns.size(); i++) {
-      type.setFloat(str(i), j);
-      j++;
-    }*/
+    type.setFloat("RL", 0);
+    type.setFloat("RM", 1);
+    type.setFloat("RS", 2);
+    type.setFloat("OL", 3);
+    type.setFloat("OM", 4);
+    type.setFloat("OS", 5);
+    type.setFloat("ROAD", 6);
     mapping.setJSONObject("type", type);
+
     header.setJSONObject("mapping", mapping);
+
     int k = 0;
     JSONArray grid = new JSONArray();
-    /*for (int w = 0; w < patternBlocks.size(); w++) {
-      JSONObject arrayValue = new JSONObject();
-      arrayValue.setFloat("type", patternBlocks.get(w).indexPattern);
-      arrayValue.setFloat("rotation", 0);
-      grid.setJSONObject(k, arrayValue);
-      k++;
-    }*/
+    for (int w = 0; w < myPlayGround.grids.get(0).blocks.size(); w++) {
+      JSONArray arr = new JSONArray();
+      arr.append(myPlayGround.grids.get(0).blocks.get(w).id);
+      arr.append(0);
+      arr.append(0);
+      grid.append(arr);
+    }
+
     header.setJSONArray("grid", grid);
-    mesh.setJSONObject("meta", meta);
+
+    mesh.setJSONObject("meta", metadata);
     mesh.setJSONObject("header", header);
+
     saveJSONObject(mesh, "data/grid.json");
-    println("Grid exported.");
+    println("Grid Exported");
   }
   
   void keyPressed(KeyEvent e) {
