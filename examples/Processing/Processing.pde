@@ -1,4 +1,5 @@
 import deadpixel.keystone.*;
+import http.requests.*;
 
 public int displayWidth = 300;
 public int displayHeight = 300;
@@ -122,7 +123,6 @@ void draw() {
 
     header.setJSONObject("mapping", mapping);
 
-    int k = 0;
     JSONArray grid = new JSONArray();
     for (int w = 0; w < myPlayGround.grids.get(0).blocks.size(); w++) {
       JSONArray arr = new JSONArray();
@@ -139,6 +139,9 @@ void draw() {
 
     saveJSONObject(mesh, "data/grid.json");
     //saveJSONObject(mesh, "https://cityio.media.mit.edu/api/table/update/cityIO_Processing");
+    PostRequest post = new PostRequest("https://cityio.media.mit.edu/api/table/update/cityIO_Processing");
+    post.addData("name", "test");
+    post.send();
     println("Grid Exported");
   }
   
