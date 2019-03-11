@@ -6,12 +6,13 @@ class PlayGround {
   ArrayList<Grid> grids;
   PVector gridSize;
   
-  PlayGround(PVector l, int w, int h){
+  PlayGround(PVector l, int w, int h,int nbCols,int nbRows,int cellSize){
     location=l;
     width=w;
     height=h;
     grids = new ArrayList();
-    grids.add(new Grid(location,16,16,20));
+    grids.add(new Grid(location,nbCols,nbRows,cellSize));
+    println("initialize a grid with cols:"+  nbCols + " nbRows:" + nbRows + "cellSize" + cellSize);
   }
   
   void display(PGraphics p){
@@ -26,20 +27,5 @@ class PlayGround {
     for(Grid g: grids){
       g.display(p);
     }
-  }
-    
-  PVector getGridSize(){
-    return new PVector(16,16);
-  }
-  void updateGridJSON(){
-    JSONArray gridsA = jsonCityIO.getJSONArray("grid");
-    for(int i=0; i < gridsA.size(); i++) {
-      JSONObject grid =  gridsA.getJSONObject(i);
-      int rot = grid.getInt("rot");
-      int type = grid.getInt("type");
-      int x = grid.getInt("x");
-      int y = grid.getInt("y");
-      grids.get(0).addBlock(new PVector(15-x, y), 20, type);    
-    }
-  }
+  } 
 }
