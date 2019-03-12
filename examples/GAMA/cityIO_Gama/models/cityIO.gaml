@@ -10,7 +10,7 @@ model CityIOGAMA
 global {
 
 	//geometry shape <- square(1 #km);
- 	string cityIOurl <-"https://cityio.media.mit.edu/api/table/virtual_table";
+ 	string cityIOurl <-"https://cityio.media.mit.edu/api/table/virtual_table"; 	
  	string VIRTUAL_LOCAL_DATA <- "./../includes/virtual_table.json";
     map<string, unknown> inputMatrixData;
     map<string, unknown> outputMatrixData;
@@ -49,7 +49,9 @@ global {
 
 	action pushGrid (map<string, unknown> _matrixData){
 	  outputMatrixData <- _matrixData;
-	  write(outputMatrixData["header"]["owner"]["institute"]);
+	  map(outputMatrixData["header"]["owner"])["institute"]<-"Gama Platform";
+	  map(outputMatrixData["header"]["owner"])["name"]<-"Arnaud Grignard";
+	  map(outputMatrixData["header"]["owner"])["title"]<-"Research Scientist";
 	  save(json_file("https://cityio.media.mit.edu/api/table/update/cityIO_Gama", outputMatrixData));
 	}
 
