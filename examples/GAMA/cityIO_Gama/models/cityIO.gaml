@@ -19,6 +19,7 @@ global {
     map<string, unknown> spatial;
 	int refresh <- 100 min: 1 max:1000 parameter: "Refresh Grid rate (cycle):" category: "Grid";
 	bool pushToCityIO <- false parameter: "Push to cityIO every refresh cycles" category: "Grid";
+	bool pushToLocalFile <- false parameter: "Push to a local every refresh cycles" category: "Grid";
 	int nbCols;
 	int nbRows;
 	int cellSize;
@@ -34,7 +35,7 @@ global {
 
 		catch {
 			inputMatrixData <- json_file(VIRTUAL_LOCAL_DATA).contents;
-			write #current_error + "Connection to Internet lost or cityIO is offline - CityMatrix is a local version from cityIO_Kendall.json";
+			write #current_error + " Impossible to read from cityIO  - Connection to Internet lost or cityIO is offline - inputMatrixData is a local version from cityIO_Kendall.json";
 		}
         
 		spatial <-inputMatrixData["header"]["spatial"];
@@ -49,10 +50,26 @@ global {
 
 	action pushGrid (map<string, unknown> _matrixData){
 	  outputMatrixData <- _matrixData;
+	   map(outputMatrixData["header"]["owner"])["institute"]<-"Gama Platform";
 	  map(outputMatrixData["header"]["owner"])["institute"]<-"Gama Platform";
 	  map(outputMatrixData["header"]["owner"])["name"]<-"Arnaud Grignard";
-	  map(outputMatrixData["header"]["owner"])["title"]<-"Research Scientist";
-	  save(json_file("https://cityio.media.mit.edu/api/table/update/cityIO_Gama", outputMatrixData));
+	  map(outputMatrixData["header"]["spatial"])["longitude"]<-105.84;
+	  map(outputMatrixData["header"]["spatial"])["latitude"]<-21.02;
+	  map(outputMatrixData["header"]["spatial"])["physical_longitude"]<-105.84;
+	  map(outputMatrixData["header"]["spatial"])["physical_latitude"]<-21.02;
+	  
+	  if(pushToCityIO){
+	  	try{
+	  	  save(json_file("https://cityio.media.mit.edu/api/table/update/cityIO_Gama", outputMatrixData));		
+	  	}catch{
+	  	  write #current_error + " Impossible to write to cityIO - Connection to Internet lost or cityIO is offline";	
+	  	}
+	    
+	  }
+	  if(pushToLocalFile){
+	  	save(json_file("./../includes/cityIO_Gama.json", outputMatrixData));
+	  }
+	  
 	}
 
 	reflex updateGrid when: ((cycle mod refresh) = 0){
