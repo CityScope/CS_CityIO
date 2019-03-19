@@ -7,11 +7,13 @@ sudo launchctl load /Library/LaunchDaemons/homebrew.mxcl.nginx.plist
 
 echo "starting nginx server"
 sleep 0.5
-echo "started cityio..."
-tmux new -d -s cityio '/Users/yasushi/code/go/bin/CS_CityIO_Backend'
+echt "started cityio..."
+tmux new -d -S /tmp/cityio-session cityio '/Users/yasushi/code/go/bin/CS_CityIO_Backend'
+chmod 777 /tmp/cityio-session
 # GO to sleep 
 echo "started choiceModels in a few seconds.."
 sleep 2
-tmux new -d -s choiceModels '/Users/Shared/CS_choiceModels/runCM.sh'
+tmux new -d -S /tmp/choiceModels-session choiceModels '/Users/Shared/CS_choiceModels/runCM.sh'
+chmod 777 /tmp/choiceModels-session
 
 
