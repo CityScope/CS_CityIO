@@ -15,6 +15,7 @@ global {
  	string VIRTUAL_LOCAL_DATA <- "./../includes/virtual_table.json";
     map<string, unknown> inputMatrixData;
     map<string, unknown> outputMatrixData;
+    map<string, unknown> outputSimulationData;
     map<int,rgb> buildingColors <-[-2::#red, -1::#orange,0::rgb(189,183,107), 1::rgb(189,183,107), 2::rgb(189,183,107),3::rgb(230,230,230), 4::rgb(230,230,230), 5::rgb(230,230,230),6::rgb(40,40,40),7::#cyan,8::#green,9::#gray];
     map<string, unknown> header;
     map<string, unknown> spatial;
@@ -85,6 +86,8 @@ global {
  	
  	reflex updateGeoJson when: ((cycle mod refresh) = 0){
  		save people	 to:"../results/people.geojson" type:"json" with: [attribute1:"attribute1",attribute2:"attribute2"];
+ 		outputSimulationData <- json_file("../results/people.geojson").contents;
+ 		save(json_file("https://cityio.media.mit.edu/api/table/update/cityIO_Gama_Simulation", outputSimulationData));
  	}
 }
 
