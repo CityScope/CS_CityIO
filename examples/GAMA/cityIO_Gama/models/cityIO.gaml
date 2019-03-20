@@ -2,6 +2,7 @@
 * Name: cityIO API for GAMA
 * Author: Arnaud Grignard
 * Description: Gives the basic read and write feature for cityIO
+*  Note: The save to geojson is a feature that is not available in the GAMA 1.8 RC2 (you need a newe version)
 */
 model CityIOGAMA
 
@@ -26,6 +27,9 @@ global {
 
 	init {
 	 do initGrid;
+	 create people number:10{
+	 	shape<-circle(1);
+	 }
 	}
     // Get a cityIO grid from a url and populate matrixData object
 	action initGrid{
@@ -45,12 +49,13 @@ global {
 				cell.type<-int(inputMatrixData["grid"][j*nbCols+i][0]);
 				cell.depth<-int(inputMatrixData["grid"][j*nbCols+i][1]);
 			}
-        }  
+        } 
+       write length(cityMatrix where (each.type=-1)); 
 	}
 
 	action pushGrid (map<string, unknown> _matrixData){
 	  outputMatrixData <- _matrixData;
-	   map(outputMatrixData["header"]["owner"])["institute"]<-"Gama Platform";
+	  map(outputMatrixData["header"]["owner"])["institute"]<-"Gama Platform";
 	  map(outputMatrixData["header"]["owner"])["institute"]<-"Gama Platform";
 	  map(outputMatrixData["header"]["owner"])["name"]<-"Arnaud Grignard";
 	  map(outputMatrixData["header"]["spatial"])["longitude"]<-105.84;
@@ -63,8 +68,7 @@ global {
 	  	  save(json_file("https://cityio.media.mit.edu/api/table/update/cityIO_Gama", outputMatrixData));		
 	  	}catch{
 	  	  write #current_error + " Impossible to write to cityIO - Connection to Internet lost or cityIO is offline";	
-	  	}
-	    
+	  	} 
 	  }
 	  if(pushToLocalFile){
 	  	save(json_file("./../includes/cityIO_Gama.json", outputMatrixData));
@@ -78,6 +82,10 @@ global {
 		  do pushGrid(inputMatrixData);	
 		}
  	}
+ 	
+ 	reflex updateGeoJson when: ((cycle mod refresh) = 0){
+ 		save people	 to:"../results/people.geojson" type:"json" with: [attribute1:"attribute1",attribute2:"attribute2"];
+ 	}
 }
 
 grid cityMatrix width:nbCols height:nbRows {
@@ -87,6 +95,17 @@ grid cityMatrix width:nbCols height:nbRows {
     aspect base{
 	  draw shape color:buildingColors[type] depth:depth;
 	  draw string(type) color:#black border:#black at:{location.x,location.y,depth+1};		
+	}
+}
+
+species people skills:[moving]{
+	int attribute1;
+	int attribute2;
+	reflex move{
+		do wander;
+	}
+	aspect default{
+		draw shape color:#blue;
 	}
 }
 
@@ -104,14 +123,16 @@ experiment Display  type: gui {
 		}
    		
    		
-		create CityIOGAMA_model with: [nbCols::int(data["header"]["spatial"]["ncols"]), nbRows::int(data["header"]["spatial"]["nrows"]),cellSize::int(data["header"]["spatial"]["cellsize"]),inputMatrixData::data]{
-			shape <-rectangle(nbCols*cellSize, nbRows*cellSize);
+		create CityIOGAMA_model with: [nbCols::int(data["header"]["spatial"]["ncols"]), nbRows::int(data["header"]["spatial"]["nrows"]),cellSize::int(data["header"]["spatial"]["cellSize"]),inputMatrixData::data]{
+			//shape <-rectangle(nbCols*cellSize, nbRows*cellSize);
+			write " " + nbCols +" " + nbRows + " " + cellSize;
 		}
 	}
 
 	output {	
 		display cityMatrixView  type:opengl  background:#black {
 			species cityMatrix aspect:base;
+			species people aspect: default;
 		}
 	}
 }
