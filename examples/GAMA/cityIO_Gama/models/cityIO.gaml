@@ -1,4 +1,4 @@
-/**
+ /**
 * Name: cityIO API for GAMA
 * Author: Arnaud Grignard
 * Description: Gives the basic read and write feature for cityIO
@@ -19,9 +19,15 @@ global {
     map<int,rgb> buildingColors <-[-2::#red, -1::#orange,0::rgb(189,183,107), 1::rgb(189,183,107), 2::rgb(189,183,107),3::rgb(230,230,230), 4::rgb(230,230,230), 5::rgb(230,230,230),6::rgb(40,40,40),7::#cyan,8::#green,9::#gray];
     map<string, unknown> header;
     map<string, unknown> spatial;
-	int refresh <- 100 min: 1 max:1000 parameter: "Refresh Grid rate (cycle):" category: "Grid";
-	bool pushToCityIO <- false parameter: "Push to cityIO every refresh cycles" category: "Grid";
-	bool pushToLocalFile <- false parameter: "Push to a local every refresh cycles" category: "Grid";
+    bool updateGrid <- false parameter: "Update Grid:" category: "Grid";
+	int gridRrefresh <- 100 min: 1 max:1000 parameter: "Refresh Grid rate (cycle):" category: "Grid";
+	bool pushGridToCityIO <- false parameter: "Push Grid to cityIO every refresh cycles" category: "Grid";
+	bool pushGridToLocalFile <- false parameter: "Push Grid to a local every refresh cycles" category: "Grid";
+	
+	int agentRrefresh <- 100 min: 1 max:1000 parameter: "Refresh Agent rate (cycle):" category: "Agent";
+	bool pushAgentToCityIO <- false parameter: "Push Agent to cityIO every refresh cycles" category: "Agent";
+	bool pushAgentToLocalFile <- false parameter: "Push Agent to a local every refresh cycles" category: "Agent";
+	
 	int nbCols;
 	int nbRows;
 	int cellSize;
@@ -64,30 +70,59 @@ global {
 	  map(outputMatrixData["header"]["spatial"])["physical_longitude"]<-105.84;
 	  map(outputMatrixData["header"]["spatial"])["physical_latitude"]<-21.02;
 	  
-	  if(pushToCityIO){
+	  if(pushGridToCityIO){
 	  	try{
 	  	  save(json_file("https://cityio.media.mit.edu/api/table/update/cityIO_Gama", outputMatrixData));		
 	  	}catch{
 	  	  write #current_error + " Impossible to write to cityIO - Connection to Internet lost or cityIO is offline";	
 	  	} 
 	  }
-	  if(pushToLocalFile){
+	  if(pushGridToLocalFile){
 	  	save(json_file("./../includes/cityIO_Gama.json", outputMatrixData));
 	  }
-	  
+	}
+	
+	action pushAgent(map<string, unknown> _matrixData){
+	  outputMatrixData <- _matrixData;
+	  map(outputMatrixData["header"]["owner"])["institute"]<-"Gama Platform";
+	  map(outputMatrixData["header"]["owner"])["institute"]<-"Gama Platform";
+	  map(outputMatrixData["header"]["owner"])["name"]<-"Arnaud Grignard";
+	  map(outputMatrixData["header"]["spatial"])["longitude"]<-105.84;
+	  map(outputMatrixData["header"]["spatial"])["latitude"]<-21.02;
+	  map(outputMatrixData["header"]["spatial"])["physical_longitude"]<-105.84;
+	  map(outputMatrixData["header"]["spatial"])["physical_latitude"]<-21.02;
+		list projected_points <- people collect ([each.location]);
+		list<map> features<-list_with(length(projected_points), map([]));	
+		loop i from: 0 to:length(projected_points)-1{
+			list unprojected_point <-point(projected_points[i][0] CRS_transform "EPSG:4326");
+			map point_geometry<-['coordinates'::unprojected_point, 'type'::'Point'];
+			map point_properties<-['property_1'::2];
+			map feature<-["type":: "Feature",'geometry'::point_geometry, 'properties'::point_properties, 'id'::i];
+			features[i]<-feature;
+			}
+		map output_geo<-["type":: "FeatureCollection",'features'::features];	
+		outputMatrixData["objects"]<-["points"::output_geo];
+		if(pushAgentToCityIO){
+	  	try{
+	  	  save(json_file("https://cityio.media.mit.edu/api/table/update/cityIO_Gama_Agent", outputMatrixData));		
+	  	}catch{
+	  	  write #current_error + " Impossible to write to cityIO - Connection to Internet lost or cityIO is offline";	
+	  	} 
+	  }
+	  if(pushAgentToLocalFile){
+	  	save(json_file("./../includes/cityIO_Gama_Agent.json", outputMatrixData));
+	  }
 	}
 
-	reflex updateGrid when: ((cycle mod refresh) = 0){
+	reflex updateGrid when: ((cycle mod gridRrefresh) = 0 and updateGrid){
 		do initGrid;
-		if(pushToCityIO){
+		if(pushGridToCityIO){
 		  do pushGrid(inputMatrixData);	
 		}
  	}
  	
- 	reflex updateGeoJson when: ((cycle mod refresh) = 0){
- 		save people	 to:"../results/people.geojson" type:"json" with: [attribute1:"attribute1",attribute2:"attribute2"];
- 		outputSimulationData <- json_file("../results/people.geojson").contents;
- 		save(json_file("https://cityio.media.mit.edu/api/table/update/cityIO_Gama_Simulation", outputSimulationData));
+ 	reflex updateAgent when: ((cycle mod agentRrefresh) = 0){
+	  do pushAgent(inputMatrixData);	
  	}
 }
 
@@ -113,7 +148,7 @@ species people skills:[moving]{
 }
 
 
-experiment Display  type: gui {
+experiment Display  type: gui autorun:true{
 	action _init_ {
    		map<string, unknown> data;
    		try {
