@@ -14,7 +14,7 @@ import (
 	"github.com/labstack/echo/middleware"
 )
 
-var port string = "10080"
+var port string = "8080"
 var prefix string = "/api"
 
 var tables map[string]interface{} = make(map[string]interface{})
@@ -22,8 +22,8 @@ var tables map[string]interface{} = make(map[string]interface{})
 // GET "/"
 func getFrontend(c echo.Context) error {
 	logger.Info("GET frontend")
-	//return c.Redirect(http.StatusMovedPermanently, "http://cityscope.media.mit.edu/CS_CityIO_Frontend/")
-	return c.Redirect(http.StatusMovedPermanently, "http://62.78.181.155:10080/frontend/dist/") //goes to the front end settings
+	return c.Redirect(http.StatusMovedPermanently, "http://cityscope.media.mit.edu/CS_CityIO_Frontend/")
+	//return c.Redirect(http.StatusMovedPermanently, "http://62.78.181.155:10080/frontend/dist/") //goes to the front end settings
 }
 
 // GET "/api"
