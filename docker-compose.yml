@@ -1,0 +1,10 @@
+version: '3'
+services:
+  backendapp:
+    container_name: backendcontainer
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '10080:10080'
