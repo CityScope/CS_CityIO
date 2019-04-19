@@ -159,12 +159,12 @@ fn main() -> std::io::Result<()> {
                     .route(web::get().to_async(get_table))
             )
             .service(
-                web::resource("/api/table/update/{name}")    
+                web::resource("/api/table/update/{name}")
                     .route(web::post().to_async(set_table))
             )
             .service(web::resource("/api/tables/list").route(web::get().to_async(list_tables)))
             .service(index)
     })
-    .bind("127.0.0.1:8080")?
+    .bind("0.0.0.0:8080")?
     .run()
 }
