@@ -96,7 +96,7 @@ fn list_tables(
     })
 }
 
-/// sets the table to /table/{name}
+/// sets the table to /table/update/{name}
 fn set_table(
     name: web::Path<String>,
     state: web::Data<JSONState>,
@@ -122,6 +122,30 @@ fn set_table(
         let meta = Meta::new(&json!(injson).to_string());
         injson.insert(String::from("meta"), json!(meta));
         map.insert(name, json!(injson));
+
+        let status_success = json!({
+            "status": "ok",
+        });
+
+        Ok(HttpResponse::Ok()
+            .content_type("application/json")
+            .body(status_success.to_string().into_bytes()))
+    })
+}
+
+
+/// sets the table to /table/clear/{name}
+fn clear_table(
+    name: web::Path<String>,
+    state: web::Data<JSONState>,
+    pl: web::Payload,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    pl.concat2().from_err().and_then(move |_| {
+        // body is loaded, now we can deserialize json-rust
+        
+        let name = format!("{}", *name);
+        let mut map = state.lock().unwrap();
+        map.remove(&name);
 
         let status_success = json!({
             "status": "ok",
@@ -161,6 +185,10 @@ fn main() -> std::io::Result<()> {
             .service(
                 web::resource("/api/table/update/{name}")
                     .route(web::post().to_async(set_table))
+            )
+            .service(
+                web::resource("/api/table/clear/{name}")
+                    .route(web::get().to_async(clear_table))
             )
             .service(web::resource("/api/tables/list").route(web::get().to_async(list_tables)))
             .service(index)
