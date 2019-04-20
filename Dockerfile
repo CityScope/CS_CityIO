@@ -27,4 +27,3 @@ COPY . .
 EXPOSE 8080
 CMD ["cargo","run"]
 #CMD ["cs_cityio_backend"]
-
