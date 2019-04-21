@@ -29,7 +29,6 @@ fn main() -> std::io::Result<()> {
         Some(new_port) => port = new_port,
         None => port = "8080".to_string(),
     }
-
     let hashmap: JSONState = Arc::new(Mutex::new(HashMap::new()));
 
     HttpServer::new(move || {
