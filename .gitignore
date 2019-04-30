@@ -10,7 +10,5 @@ Cargo.lock
 **/*.rs.bk
 
 /log/
-
-
 # this is from aka's IDE
 /.idea/

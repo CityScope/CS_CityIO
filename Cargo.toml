@@ -9,6 +9,7 @@ actix-web = "1.0.0-alpha.4"
 
 bytes = "0.4"
 futures = "0.1"
+log = "0.4"
 env_logger = "*"
 
 serde = "1.0"
