@@ -14,7 +14,7 @@ use handlers::{get_table, set_table, list_tables, index, clear_table};
 use model::{JSONState};
 
 fn main() -> std::io::Result<()> {
-    
+
     if cfg!(debug_assertions) {
         std::env::set_var("RUST_LOG", "actix_web=info,cs_cityio_backend=debug");
     } else {
@@ -63,7 +63,7 @@ fn main() -> std::io::Result<()> {
             )
             .service(index)
     })
-    .bind(format!("127.0.0.1:{}", &port))
+    .bind(format!("0.0.0.0:{}", &port))
     .and_then(| result |{
         info!("server started, running @ {}", &port);
         Ok(result)
