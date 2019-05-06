@@ -1,0 +1,2 @@
+[submodule "sha256"]
+	url = https://github.com/yasushisakai/sha256
