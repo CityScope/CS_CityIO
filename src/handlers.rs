@@ -2,12 +2,12 @@ use log::{warn, debug};
 use actix_web::{get, web, Error, HttpResponse, Result as ActixResult};
 use actix_web::http::{header, StatusCode};
 use futures::{Future, Stream};
-use serde_json::{json, Error as JSONError};
+use serde_json::{json, Value, Error as JSONError};
 
 use crate::model::{TableList, Meta, JSONState, JSONObject};
 
 const REDIRECT_URL: &str = "http://cityscope.media.mit.edu/CS_CityIO_Frontend/";
-const BASE_URL: &str = "https://cityio.media.mit.edu/";
+const BASE_URL: &str = "https://cityio.media.mit.edu";
 
 #[get("/")]
 pub fn index() -> ActixResult<HttpResponse> {
@@ -54,6 +54,43 @@ pub fn get_table(
         Ok(HttpResponse::Ok()
             .content_type("application/json")
             .body(data.into_bytes()))
+    })
+}
+
+pub fn get_table_field(
+    path: web::Path<(String, String)>,
+    state: web::Data<JSONState>,
+    pl: web::Payload,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    pl.concat2().from_err().and_then(move |_| {
+        let name = format!("{}", path.0);
+        let field = format!("{}", path.1);
+        let map = state.lock().unwrap();
+        let mut data: Value;
+
+        println!("{}", &field);
+
+        let mut split = field.split("/");
+
+        match map.get(&name) {
+            Some(v) => {
+                data = v.to_owned();
+                for s in split {
+                    match data.get(&s) {
+                        Some(f) => data = f.to_owned(),
+                        None => {
+                            data = json!({"status": format!("field {} does not exist", &s)});
+                            break;
+                        },
+                    }
+                }
+            },
+            None => data = json!({"status": "table not found"}),
+        };
+
+        Ok(HttpResponse::Ok()
+            .content_type("application/json")
+            .body(data.to_string().into_bytes()))
     })
 }
 
