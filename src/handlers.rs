@@ -26,7 +26,7 @@ pub fn list_tables(
         let mut names: Vec<String> = Vec::new();
 
         for key in tables.keys() {
-            names.push(format!("{}/api/table/{}", &BASE_URL, &key.to_string()));
+            names.push(format!("{}api/table/{}", &BASE_URL, &key.to_string()));
         }
 
         let data = json!(TableList::new(names)).to_string();

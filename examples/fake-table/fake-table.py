@@ -3,8 +3,8 @@ import sched
 from requests import post
 from Table import Table
 
-base_url = 'https://cityio.media.mit.edu/'
-# base_url = 'http://localhost:8080/'
+# base_url = 'https://cityio.media.mit.edu/'
+base_url = 'http://localhost:8080/'
 
 table = Table()
 
