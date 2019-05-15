@@ -1,20 +1,26 @@
-mod model;
 mod handlers;
+mod model;
 
-use std::env;
 use std::collections::HashMap;
+use std::env;
 use std::sync::{Arc, Mutex};
 
-use log::info;
-use actix_web::{web, App, HttpServer};
 use actix_web::http::header;
 use actix_web::middleware::{cors::Cors, Logger};
+use actix_web::{web, App, HttpServer};
+use log::info;
 
-use handlers::{get_table, set_table, list_tables, index, clear_table};
-use model::{JSONState};
+use handlers::{
+    clear_table,
+    get_table,
+    get_table_field,
+    index,
+    list_tables,
+    set_table
+};
+use model::JSONState;
 
 fn main() -> std::io::Result<()> {
-    
     if cfg!(debug_assertions) {
         std::env::set_var("RUST_LOG", "actix_web=info,cs_cityio_backend=debug");
     } else {
@@ -45,26 +51,19 @@ fn main() -> std::io::Result<()> {
                         header::CONTENT_TYPE,
                     ]),
             )
+            .service(web::resource("/api/table/{name}").route(web::get().to_async(get_table)))
             .service(
-                web::resource("/api/table/{name}")
-                    .route(web::get().to_async(get_table))
+                web::resource("/api/table/update/{name}").route(web::post().to_async(set_table)),
             )
             .service(
-                web::resource("/api/table/update/{name}")    
-                    .route(web::post().to_async(set_table))
+                web::resource("/api/table/clear/{name}").route(web::get().to_async(clear_table)),
             )
-            .service(
-                web::resource("/api/table/clear/{name}")
-                    .route(web::get().to_async(clear_table))
-            )
-            .service(
-                web::resource("/api/tables/list")
-                     .route(web::get().to_async(list_tables))
-            )
+            .service(web::resource("/api/tables/list").route(web::get().to_async(list_tables)))
+            .service(web::resource("/api/table/{name}/{tail:.*}").route(web::get().to_async(get_table_field)))
             .service(index)
     })
     .bind(format!("127.0.0.1:{}", &port))
-    .and_then(| result |{
+    .and_then(|result| {
         info!("server started, running @ {}", &port);
         Ok(result)
     })?
