@@ -64,13 +64,17 @@ pub fn get_table_field(
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     pl.concat2().from_err().and_then(move |_| {
         let name = format!("{}", path.0);
-        let field = format!("{}", path.1);
+        let mut field = format!("{}", path.1);
         let map = state.lock().unwrap();
         let mut data: Value;
 
+        if field.chars().last().unwrap() == '/' {
+            field.pop();
+        }
+
         println!("{}", &field);
 
-        let mut split = field.split("/");
+        let split = field.split("/");
 
         match map.get(&name) {
             Some(v) => {
