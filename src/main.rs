@@ -10,14 +10,7 @@ use actix_web::middleware::{cors::Cors, Logger};
 use actix_web::{web, App, HttpServer};
 use log::info;
 
-use handlers::{
-    clear_table,
-    get_table,
-    get_table_field,
-    index,
-    list_tables,
-    set_table
-};
+use handlers::{clear_table, get_table, get_table_field, index, list_tables, set_table};
 use model::JSONState;
 
 fn main() -> std::io::Result<()> {
@@ -59,7 +52,10 @@ fn main() -> std::io::Result<()> {
                 web::resource("/api/table/clear/{name}").route(web::get().to_async(clear_table)),
             )
             .service(web::resource("/api/tables/list").route(web::get().to_async(list_tables)))
-            .service(web::resource("/api/table/{name}/{tail:.*}").route(web::get().to_async(get_table_field)))
+            .service(
+                web::resource("/api/table/{name}/{tail:.*}")
+                    .route(web::get().to_async(get_table_field)),
+            )
             .service(index)
     })
     .bind(format!("127.0.0.1:{}", &port))

@@ -13,12 +13,6 @@ pub type JSONObject = Map<String, Value>;
 #[derive(Serialize, Deserialize)]
 pub struct TableList(Vec<String>);
 
-impl TableList {
-    pub fn new(v: Vec<String>) -> TableList {
-        TableList(v)
-    }
-}
-
 #[derive(Serialize, Deserialize)]
 pub struct Meta {
     id: String,

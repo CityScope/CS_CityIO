@@ -11,6 +11,7 @@ bytes = "0.4"
 futures = "0.1"
 log = "0.4"
 env_logger = "*"
+url = "1.0"
 
 serde = "1.0"
 serde_json = "1.0"
