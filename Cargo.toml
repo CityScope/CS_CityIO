@@ -5,19 +5,20 @@ authors = ["yasushi"]
 edition = "2018"
 
 [dependencies]
-actix-web = "1.0.0-alpha.4"
-
-bytes = "0.4"
-futures = "0.1"
-log = "0.4"
-env_logger = "*"
 url = "1.0"
 
-serde = "1.0"
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-serde_derive = "1.0"
-json = "*"
-postgres = {version = "0.15", features = ["with-serde_json"]}
+
+bytes="0.4"
+futures="0.1"
+log="0.4"
+env_logger="*"
+
+actix-web = "1.0.0-beta.4"
+actix-files = "0.1.0-beta.4"
+diesel = { version = "1.0.0", features = ["postgres", "serde_json", "chrono", "r2d2"] }
+dotenv = "0.9.0"
+chrono= { version = "0.4", features = ["serde"] }
 
 sha256 = { path="../sha256" }
-
