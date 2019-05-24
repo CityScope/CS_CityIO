@@ -7,11 +7,18 @@ import random
 import os
 import slack
 from slack import WebClient
+import socket
 
 # https://api.slack.com/apps/AJPN6J83W/install-on-team?success=1
 # cd ~
 # nano .bash_profile
 # SLACKBOT = xxxxx
+
+
+def get_ip_address():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("8.8.8.8", 80))
+    return str(s.getsockname()[0])
 
 
 def get_folder_path():
@@ -50,13 +57,12 @@ def human_time(this_time):
 
 def send_slack_msg(msg):
     # connect to the api and create client
-    client = slack.WebClient(token=os.environ['SLACKBOT'])
+    client = slack.WebClient('xoxb-...')
     # tst slack api
     client.api_call("auth.test")
     # send to slack
     response = client.chat_postMessage(channel='#cityio', text=msg)
     assert response["ok"]
-    assert response["message"]["text"] == msg
 
 
 def loop():
@@ -103,4 +109,6 @@ def loop():
 
 
 if __name__ == '__main__':
+    init_msg = "cityIO Virtual-Table & Observer Starting... SSH using: $ssh pi@" + get_ip_address()
+    send_slack_msg(init_msg)
     loop()
