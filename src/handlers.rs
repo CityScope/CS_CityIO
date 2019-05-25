@@ -1,19 +1,21 @@
-use log::{warn, debug};
-use actix_web::{get, web, Error, HttpResponse, Result as ActixResult};
+use crate::model::{JSONObject, JSONState, Meta};
 use actix_web::http::{header, StatusCode};
+use actix_web::{get, web, Error, HttpResponse, Result as ActixResult};
 use futures::{Future, Stream};
-use serde_json::{json, Value, Error as JSONError};
+use log::{debug, warn};
+use serde_json::{json, Value};
+use url::Url;
 
-use crate::model::{TableList, Meta, JSONState, JSONObject};
-
-const REDIRECT_URL: &str = "http://cityscope.media.mit.edu/CS_CityIO_Frontend/";
+const CITY_SCOPE: &str = "http://cityscope.media.mit.edu/CS_CityIO_Frontend/";
 const BASE_URL: &str = "https://cityio.media.mit.edu";
 
 #[get("/")]
 pub fn index() -> ActixResult<HttpResponse> {
+    let redirect_url = Url::parse(CITY_SCOPE).unwrap();
+
     Ok(HttpResponse::build(StatusCode::MOVED_PERMANENTLY)
-       .header(header::LOCATION, REDIRECT_URL)
-       .finish())
+        .header(header::LOCATION, redirect_url.as_str())
+        .finish())
 }
 
 pub fn list_tables(
@@ -24,15 +26,14 @@ pub fn list_tables(
         let tables = state.lock().unwrap();
 
         let mut names: Vec<String> = Vec::new();
+        let mut url = Url::parse(BASE_URL).unwrap();
 
         for key in tables.keys() {
-            names.push(format!("{}api/table/{}", &BASE_URL, &key.to_string()));
+            url.set_path(&format!("api/table/{}", &key.to_string()));
+            names.push(url.as_str().to_string());
         }
 
-        let data = json!(TableList::new(names)).to_string();
-        Ok(HttpResponse::Ok()
-            .content_type("application/json")
-            .body(data.into_bytes()))
+        Ok(HttpResponse::Ok().json(&names))
     })
 }
 
@@ -44,16 +45,17 @@ pub fn get_table(
     pl.concat2().from_err().and_then(move |_| {
         let name = format!("{}", *name);
         let map = state.lock().unwrap();
-        let mut data: String;
 
-        match map.get(&name) {
-            Some(v) => data = v.to_string(),
-            None => data = json!({"status": "table not found"}).to_string(),
+        debug!("/n **get_table** /n{:?}/n", &name);
+
+        let data = match map.get(&name) {
+            Some(v) => v,
+            None => {
+                let mes = format!("table '{}' not found", &name);
+                return Ok(HttpResponse::Ok().json(err_json(&mes)));
+            }
         };
-
-        Ok(HttpResponse::Ok()
-            .content_type("application/json")
-            .body(data.into_bytes()))
+        Ok(HttpResponse::Ok().json(&data))
     })
 }
 
@@ -64,37 +66,42 @@ pub fn get_table_field(
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     pl.concat2().from_err().and_then(move |_| {
         let name = format!("{}", path.0);
-        let mut field = format!("{}", path.1);
         let map = state.lock().unwrap();
-        let mut data: Value;
+
+        debug!("/n **get_table_field** /n{:?}/n", &name);
+
+        let table_data = match map.get(&name) {
+            Some(v) => v,
+            None => {
+                let mes = format!("table '{}' not found", &name);
+                return Ok(HttpResponse::Ok().json(err_json(&mes)));
+            }
+        };
+
+        let mut field = format!("{}", path.1);
+
+        // is field empty??
+        if &field == "" {
+            return Ok(HttpResponse::Ok().json(&table_data));
+        }
 
         if field.chars().last().unwrap() == '/' {
             field.pop();
         }
 
-        println!("{}", &field);
+        let fields = field.split("/");
+        let mut data: Value = table_data.to_owned();
 
-        let split = field.split("/");
-
-        match map.get(&name) {
-            Some(v) => {
-                data = v.to_owned();
-                for s in split {
-                    match data.get(&s) {
-                        Some(f) => data = f.to_owned(),
-                        None => {
-                            data = json!({"status": format!("field {} does not exist", &s)});
-                            break;
-                        },
-                    }
+        for f in fields {
+            match data.get(&f) {
+                Some(d) => data = d.to_owned(),
+                None => {
+                    let mes = format!("table '{}' does not include field '{}'", &name, &f);
+                    return Ok(HttpResponse::Ok().json(err_json(&mes)));
                 }
-            },
-            None => data = json!({"status": "table not found"}),
-        };
-
-        Ok(HttpResponse::Ok()
-            .content_type("application/json")
-            .body(data.to_string().into_bytes()))
+            }
+        }
+        Ok(HttpResponse::Ok().json(&data))
     })
 }
 
@@ -105,36 +112,26 @@ pub fn set_table(
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     pl.concat2().from_err().and_then(move |body| {
         // body is loaded, now we can deserialize json-rust
-        
-        debug!("{:?}", &body);
 
-        let result: Result<JSONObject, JSONError> =
-            serde_json::from_slice(&body); // return Result
+        debug!("/n **set_table** /n{:?}/n", &body);
 
-        let name = format!("{}", *name);
-
-        let mut injson: JSONObject = match result {
+        let mut result: JSONObject = match serde_json::from_slice(&body) {
             Ok(v) => v,
-            Err(_e) => {
-                let mut er = JSONObject::new();
-                er.insert("status".to_string(), json!("error, please post a Json **Object**"));
-                warn!("error in json format");
-                er
+            Err(e) => {
+                let mes = format!("error parsing to json: {}", e.to_string());
+                warn!("json parse error.");
+                return Ok(HttpResponse::Ok().json(err_json(&mes)));
             }
         };
 
+        let name = format!("{}", *name);
+
         let mut map = state.lock().unwrap();
-        let meta = Meta::new(&json!(injson).to_string());
-        injson.insert(String::from("meta"), json!(meta));
-        map.insert(name, json!(injson));
+        let meta = Meta::new(&json!(result).to_string());
+        result.insert("meta".to_string(), json!(meta));
+        map.insert(name, json!(result));
 
-        let status_success = json!({
-            "status": "ok",
-        });
-
-        Ok(HttpResponse::Ok()
-            .content_type("application/json")
-            .body(status_success.to_string().into_bytes()))
+        Ok(HttpResponse::Ok().json(json!({"status":"ok"})))
     })
 }
 
@@ -144,15 +141,19 @@ pub fn clear_table(
     pl: web::Payload,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     pl.concat2().from_err().and_then(move |_| {
-        
         let name = format!("{}", *name);
         let mut map = state.lock().unwrap();
         map.remove(&name);
-        let status_success = json!({
-            "status": "ok",
-        });
-        Ok(HttpResponse::Ok()
-            .content_type("application/json")
-            .body(status_success.to_string().into_bytes()))
+        Ok(HttpResponse::Ok().json(json!({"status":"ok"})))
+    })
+}
+
+////////////////////////
+// helpers
+////////////////////////
+fn err_json(mes: &str) -> Value {
+    json!({
+        "status": "error",
+        "mes" : mes
     })
 }
