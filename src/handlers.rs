@@ -1,18 +1,18 @@
 use crate::database;
-use crate::model::{JSONObject, JSONState, Meta, NewTable};
-use crate::CityIOState;
-use std::collections::HashMap;
+use crate::model::{CityIOState, Meta, NewTable};
+use std::sync::mpsc;
 use std::thread;
 
 use actix_web::http::{header, StatusCode};
 use actix_web::{get, web, Error, HttpResponse, Result as ActixResult};
-use chrono::prelude::*;
 use chrono::Utc;
 use futures::future::{ok as fut_ok, Either};
 use futures::{Future, Stream};
 use log::{debug, warn};
-use serde_json::{json, Value};
+use serde_json::{from_slice, from_value, json, Map, Value};
 use url::Url;
+
+type JSONObject = Map<String, Value>;
 
 const CITY_SCOPE: &str = "http://cityscope.media.mit.edu/CS_CityIO_Frontend/";
 const BASE_URL: &str = "https://cityio.media.mit.edu";
@@ -48,34 +48,13 @@ pub fn list_tables(
     })
 }
 
-// gets table from memory and db. First it will look into the HashMap
-// if not found, digs into the db, if found adds to the memory
 pub fn get_table(
-    name: web::Path<String>,
-    io: web::Data<CityIOState>,
+    path: web::Path<String>,
+    state: web::Data<CityIOState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    let table_name = format!("{}", name);
-    let pool: database::Pool;
-    {
-        let state = io.lock().unwrap();
-        pool = state.pool.to_owned();
-        tables = state.tables.to_owned();
-    }
-
-    match tables.get(&table_name) {
-        // we found it in memory!
-        Some(t) => Either::A(fut_ok(HttpResponse::Ok().json(t))),
-        // we dig into the db
-        None => Either::B(
-            web::block(move || database::read_last_table_named(&table_name, pool, io)).then(
-                |res| match res {
-                    // found it
-                    Ok(t) => Ok(HttpResponse::Ok().json(t.data)),
-                    // nope, or an error occured
-                    Err(e) => Ok(HttpResponse::Ok().json(err_json(&e.to_string()))),
-                },
-            ),
-        ),
+    match lookup_table_and_add(&path.to_owned(), state) {
+        Some(t) => fut_ok(HttpResponse::Ok().json(t)),
+        None => fut_ok(HttpResponse::Ok().json("table not found")),
     }
 }
 
@@ -84,40 +63,13 @@ pub fn get_table_field(
     path: web::Path<(String, String)>,
     state: web::Data<CityIOState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    let name = format!("{}", path.0);
-    let pool: database::Pool;
-    let tables: HashMap<String, Value>;
-    {
-        let state = state.lock().unwrap();
-        pool = state.pool.to_owned();
-        tables = state.tables.to_owned();
-    }
-
-    let mut field = format!("{}", path.1);
-
-    debug!("**get_table_field** {:?}", &name);
-
-    let table_data: Value;
-
-    match tables.get(&name) {
-        Some(v) => {
-            table_data = v.to_owned();
-        }
-        None => {
-            let table_in_db =
-                web::block(move || database::read_last_table_named(&name, pool, state)).wait();
-            match table_in_db {
-                Ok(t) => {
-                    table_data = t.data;
-                }
-                Err(e) => {
-                    let mes = format!("{:?}", e.to_string());
-                    return fut_ok(HttpResponse::Ok().json(err_json(&mes)));
-                }
-            }
-        }
+    let table_name = path.0.to_owned();
+    let table_data = match lookup_table_and_add(&table_name, state) {
+        Some(t) => t,
+        None => return fut_ok(HttpResponse::Ok().json("table not found")),
     };
 
+    let mut field = path.1.to_owned();
     // is field empty??
     if &field == "" {
         return fut_ok(HttpResponse::Ok().json(&table_data));
@@ -143,6 +95,78 @@ pub fn get_table_field(
     fut_ok(HttpResponse::Ok().json(&data))
 }
 
+pub fn update_module(
+    path: web::Path<(String, String)>,
+    state: web::Data<CityIOState>,
+    pl: web::Payload,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let field_name = path.1.to_owned();
+
+    if &field_name == "meta" {
+        let mes = format!(
+            "Posting a module with name '{}' is not allowed. Request was rejected.",
+            &field_name
+        );
+        return Either::A(fut_ok(HttpResponse::Ok().json(err_json(&mes))));
+    }
+
+    Either::B(pl.concat2().from_err().and_then(move |body| {
+        // get the table data
+        let (tx, rx) = mpsc::channel();
+
+        let thread_state = state.clone();
+        let table_name = path.0.to_owned();
+        thread::spawn(move || {
+            let tmp = lookup_table_and_add(&table_name, thread_state);
+            tx.send(tmp).unwrap();
+        });
+
+        let module_data = match from_slice(&body) {
+            Ok(d) => d,
+            Err(e) => return Ok(HttpResponse::Ok().json(e.to_string())),
+        };
+
+        let rec = rx.recv().unwrap();
+        let mut table_data: JSONObject;
+
+        match rec {
+            Some(t) => table_data = from_value(t).unwrap(),
+            None => table_data = Map::new(),
+        };
+
+        table_data.insert(field_name, module_data);
+        let new_id = table_data.update_meta();
+
+        let thread_state = state.clone();
+        let table_name = path.0.to_owned();
+        let data_for_db = json!(&table_data);
+        // fire and forget or should we ??
+        thread::spawn(move || {
+            let state_data = thread_state.lock().unwrap();
+            let pool = state_data.pool.to_owned();
+            let now = Utc::now().naive_utc();
+            let new = NewTable {
+                id: &new_id,
+                ts: &now,
+                name: &table_name,
+                data: &data_for_db,
+            };
+            if database::create_table(new, pool).is_err() {
+                warn!("could not save to database, not saving");
+            };
+        });
+
+        let mut state = state.lock().unwrap();
+
+        let tables = &mut state.tables;
+        let table_name = path.0.to_owned();
+
+        tables.insert(table_name, json!(&table_data));
+
+        Ok(HttpResponse::Ok().json(&table_data))
+    }))
+}
+
 pub fn set_table(
     name: web::Path<String>,
     state: web::Data<CityIOState>,
@@ -152,16 +176,19 @@ pub fn set_table(
         // body is loaded, now we can deserialize json-rust
 
         // table name 'clear' is not allowed
-        let name = format!("{}", *name);
+        let name = name.to_owned();
 
-        if &name == "clear" {
-            return Ok(HttpResponse::Ok()
-                .json("Posting a table with name 'clear' is not allowed. Request was rejected."));
+        if &name == "clear" || &name == "update" {
+            let mes = format!(
+                "Posting a table with name '{}' is not allowed. Request was rejected.",
+                &name
+            );
+            return Ok(HttpResponse::Ok().json(err_json(&mes)));
         }
 
         debug!("**set_table** {:?}", &body);
 
-        let mut result: JSONObject = match serde_json::from_slice(&body) {
+        let mut result: JSONObject = match from_slice(&body) {
             Ok(v) => v,
             Err(e) => {
                 let mes = format!("error parsing to json: {}", e.to_string());
@@ -172,9 +199,7 @@ pub fn set_table(
 
         let mut state_data = state.lock().unwrap();
 
-        // formulating the meta field
-        let meta = Meta::new(&json!(result).to_string());
-        result.insert("meta".to_string(), json!(meta));
+        let new_id = result.update_meta();
         state_data.tables.insert(name.clone(), json!(result));
 
         let data_for_db: Value = json!(result.to_owned());
@@ -187,12 +212,14 @@ pub fn set_table(
             let pool = state_data.pool.to_owned();
             let now = Utc::now().naive_utc();
             let new = NewTable {
-                id: &meta.id,
+                id: &new_id,
                 ts: &now,
                 name: &name,
                 data: &data_for_db,
             };
-            database::create_table(new, pool);
+            if database::create_table(new, pool).is_err() {
+                warn!("could not save to db");
+            };
         });
 
         Ok(HttpResponse::Ok().json(json!({"status":"ok"})))
@@ -232,4 +259,62 @@ fn err_json(mes: &str) -> Value {
         "status": "error",
         "mes" : mes
     })
+}
+
+trait MetaUpdatable {
+    fn update_meta(&mut self) -> String;
+}
+
+impl MetaUpdatable for JSONObject {
+    fn update_meta(&mut self) -> String {
+        self.remove("meta");
+        let s = json!(&self).to_string();
+        let meta = Meta::new(&s);
+        self.insert("meta".to_string(), json!(&meta));
+        meta.id
+    }
+}
+
+/// looks for the table in both memory and db.
+/// if it finds in the db, and not in memory,
+/// it adds it to memory.
+fn lookup_table_and_add(name: &str, state: web::Data<CityIOState>) -> Option<Value> {
+    let (tx, rx) = mpsc::channel();
+
+    let table_name = name.to_owned();
+    let thread_state = state.clone();
+
+    thread::Builder::new()
+        .name("lookup_table_and_add".to_string())
+        .spawn(move || {
+            let state = thread_state.lock().expect("cannot lock state??");
+            let tmp = database::read_last_table(&table_name, &state.pool).map(|t| t.data);
+            if tx.send(tmp).is_err() {
+                warn!("wasted channel");
+            }
+        })
+        .unwrap();
+
+    let mut state = state.lock().unwrap();
+    let tables = &mut state.tables;
+    let table_name = name.to_owned();
+
+    match &tables.get(&table_name) {
+        // we found it in memory
+        Some(t) => Some(json!(t)),
+        None => {
+            // let's check the db.
+            let rec = rx.recv().unwrap();
+            match rec {
+                Ok(t) => {
+                    tables.insert(table_name, t.to_owned());
+                    Some(t)
+                }
+                Err(e) => {
+                    debug!("{}", &e.to_string());
+                    None
+                }
+            }
+        }
+    }
 }

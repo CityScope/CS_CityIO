@@ -1,20 +1,31 @@
-use std::time::{SystemTime, UNIX_EPOCH};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use serde::{Serialize, Deserialize};
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 use chrono::prelude::*;
 use chrono::NaiveDateTime;
 
 use sha256::sha256::{format_hash, hash};
 use crate::schema::tables;
-use crate::database::Pool;
+use crate::database::{Pool, init_pool};
 
-pub type JSONState = Arc<Mutex<HashMap<String, Value>>>;
-pub type JSONObject = Map<String, Value>;
-pub type CityIOState = (JSONState, Pool);
+pub struct CityIOData {
+    pub pool: Pool,
+    pub tables: HashMap<String, Value>,
+}
+
+impl CityIOData {
+    pub fn new() -> Self {
+        CityIOData {
+            pool: init_pool(),
+            tables: HashMap::new(),
+        }
+    }
+}
+
+pub type CityIOState = Arc<Mutex<CityIOData>>;
 
 #[derive(Serialize, Deserialize, Queryable, Debug, Clone)]
 pub struct Table {

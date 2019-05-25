@@ -6,7 +6,6 @@ mod handlers;
 mod model;
 mod schema;
 
-use std::collections::HashMap;
 use std::env;
 use std::sync::{Arc, Mutex};
 
@@ -15,26 +14,11 @@ use actix_web::middleware::{cors::Cors, Logger};
 use actix_web::{web, App, HttpServer};
 use log::info;
 
-use database::{init_pool, Pool};
-use handlers::{clear_table, get_table, get_table_field, index, list_tables, set_table};
-use model::JSONState;
-use serde_json::{Value};
+use handlers::{
+    clear_table, get_table, get_table_field, index, list_tables, set_table, update_module,
+};
 
-pub struct CityIOData {
-    pool: Pool,
-    tables: HashMap<String, Value>,
-}
-
-impl CityIOData {
-    pub fn new () -> Self {
-        CityIOData {
-            pool: init_pool(),
-            tables: HashMap::new()
-        }
-    }
-}
-
-pub type CityIOState = Arc<Mutex<CityIOData>>;
+use model::{CityIOData, CityIOState};
 
 fn main() -> std::io::Result<()> {
     if cfg!(debug_assertions) {
@@ -51,10 +35,6 @@ fn main() -> std::io::Result<()> {
         Some(new_port) => port = new_port,
         None => port = "8080".to_string(),
     }
-
-    // data, accessible to each handler
-    // let hashmap: JSONState = Arc::new(Mutex::new(HashMap::new()));
-    // let pool:Pool = init_pool();
 
     let state: CityIOState = Arc::new(Mutex::new(CityIOData::new()));
 
@@ -77,6 +57,10 @@ fn main() -> std::io::Result<()> {
                 web::resource("/api/table/update/{name}").route(web::post().to_async(set_table)),
             )
             .service(
+                web::resource("/api/table/update/{table_name}/{module_name}")
+                    .route(web::post().to_async(update_module)),
+            )
+            .service(
                 web::resource("/api/table/clear/{name}").route(web::get().to_async(clear_table)),
             )
             .service(web::resource("/api/tables/list").route(web::get().to_async(list_tables)))
@@ -84,6 +68,7 @@ fn main() -> std::io::Result<()> {
                 web::resource("/api/table/{name}/{tail:.*}")
                     .route(web::get().to_async(get_table_field)),
             )
+
             .service(index)
     })
     .bind(format!("127.0.0.1:{}", &port))
