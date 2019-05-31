@@ -3,7 +3,7 @@ use actix_web::http::{header, StatusCode};
 use actix_web::{get, web, Error, HttpResponse, Result as ActixResult};
 use futures::{Future, Stream};
 use log::{debug, warn};
-use serde_json::{json, Value};
+use serde_json::{json, Map, Value};
 use url::Url;
 
 const CITY_SCOPE: &str = "http://cityscope.media.mit.edu/CS_CityIO_Frontend/";
@@ -59,7 +59,7 @@ pub fn get_table(
     })
 }
 
-pub fn get_table_field(
+pub fn deep_get(
     path: web::Path<(String, String)>,
     state: web::Data<JSONState>,
     pl: web::Payload,
@@ -112,8 +112,9 @@ pub fn set_table(
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     pl.concat2().from_err().and_then(move |body| {
         // body is loaded, now we can deserialize json-rust
+        let name = format!("{}", *name);
 
-        debug!("/n **set_table** /n{:?}/n", &body);
+        debug!("**set_table** {:?}", &name);
 
         let mut result: JSONObject = match serde_json::from_slice(&body) {
             Ok(v) => v,
@@ -124,8 +125,6 @@ pub fn set_table(
             }
         };
 
-        let name = format!("{}", *name);
-
         let mut map = state.lock().unwrap();
         let meta = Meta::new(&json!(result).to_string());
         result.insert("meta".to_string(), json!(meta));
@@ -134,6 +133,49 @@ pub fn set_table(
         Ok(HttpResponse::Ok().json(json!({"status":"ok"})))
     })
 }
+
+pub fn set_module(
+    path: web::Path<(String, String)>,
+    state: web::Data<JSONState>,
+    pl: web::Payload,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    pl.concat2().from_err().and_then(move |body| {
+        // body is loaded, now we can deserialize json-rust
+
+        let table_name = path.0.to_owned();
+        let module_name = path.1.to_owned();
+
+        debug!("**set_module** {}/{}", &table_name, &module_name);
+
+        let mut result: Value = match serde_json::from_slice(&body) {
+            Ok(v) => v,
+            Err(e) => {
+                let mes = format!("error parsing to json: {}", e.to_string());
+                warn!("json parse error.");
+                return Ok(HttpResponse::Ok().json(err_json(&mes)));
+            }
+        };
+
+        let mut map = state.lock().unwrap();
+
+        let mut current = match map.get(&table_name) {
+            Some(t) => t.as_object().unwrap().to_owned(),
+            None => Map::new(),
+        };
+
+        debug!("{:?}", current);
+
+        current.remove(&"meta".to_string());
+        current.insert(module_name, result);
+
+        let meta = Meta::new(&json!(&current).to_string());
+        current.insert("meta".to_string(), json!(meta));
+        map.insert(table_name, json!(current));
+
+        Ok(HttpResponse::Ok().json(json!({"status":"ok"})))
+    })
+}
+
 
 pub fn clear_table(
     name: web::Path<String>,

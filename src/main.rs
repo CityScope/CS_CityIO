@@ -5,12 +5,12 @@ use std::collections::HashMap;
 use std::env;
 use std::sync::{Arc, Mutex};
 
-use actix_web::http::header;
-use actix_web::middleware::{cors::Cors, Logger};
+use actix_web::http::{header};
+use actix_web::middleware::{cors::Cors, Logger, NormalizePath};
 use actix_web::{web, App, HttpServer};
 use log::info;
 
-use handlers::{clear_table, get_table, get_table_field, index, list_tables, set_table};
+use handlers::{clear_table, get_table, deep_get, index, list_tables, set_module, set_table};
 use model::JSONState;
 
 fn main() -> std::io::Result<()> {
@@ -34,6 +34,7 @@ fn main() -> std::io::Result<()> {
         App::new()
             .data(hashmap.clone())
             .wrap(Logger::default())
+            .wrap(NormalizePath)
             .wrap(
                 Cors::new()
                     .allowed_methods(vec!["GET", "POST"])
@@ -49,12 +50,25 @@ fn main() -> std::io::Result<()> {
                 web::resource("/api/table/update/{name}").route(web::post().to_async(set_table)),
             )
             .service(
+                web::resource("/api/table/update/{name}/").route(web::post().to_async(set_table)),
+            )
+            .service(
+                web::resource("/api/table/update/{name}/{module}").route(web::post().to_async(set_module)),
+            )
+            .service(
+                web::resource("/api/table/update/{name}/{module}/").route(web::post().to_async(set_module)),
+            )
+            .service(
                 web::resource("/api/table/clear/{name}").route(web::get().to_async(clear_table)),
             )
+            .service(
+                web::resource("/api/table/clear/{name}/").route(web::get().to_async(clear_table)),
+            )
+            .service(web::resource("/api/tables/list/").route(web::get().to_async(list_tables)))
             .service(web::resource("/api/tables/list").route(web::get().to_async(list_tables)))
             .service(
                 web::resource("/api/table/{name}/{tail:.*}")
-                    .route(web::get().to_async(get_table_field)),
+                    .route(web::get().to_async(deep_get)),
             )
             .service(index)
     })
