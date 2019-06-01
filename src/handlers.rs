@@ -126,9 +126,27 @@ pub fn set_table(
         };
 
         let mut map = state.lock().unwrap();
-        let meta = Meta::new(&json!(result).to_string());
-        result.insert("meta".to_string(), json!(meta));
-        map.insert(name, json!(result));
+
+        let mut new_table = match map.get(&name) {
+            Some(t) => {
+                let mut tmp: Map<String, Value> = serde_json::from_value(t.to_owned()).unwrap();
+                result.remove("meta");
+                for e in result.iter() {
+                   tmp.insert(e.0.to_owned(),e.1.to_owned());
+                }
+                tmp
+            },
+            None => {
+                result
+            }
+        };
+
+        let meta = Meta::new(&json!(new_table).to_string());
+        new_table.insert("meta".to_owned(), json!(meta));
+
+        // let meta = Meta::new(&json!(result).to_string());
+        // result.insert("meta".to_string(), json!(meta));
+        map.insert(name, json!(new_table));
 
         Ok(HttpResponse::Ok().json(json!({"status":"ok"})))
     })
