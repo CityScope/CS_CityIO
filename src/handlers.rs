@@ -10,6 +10,9 @@ use url::Url;
 const CITY_SCOPE: &str = "http://cityscope.media.mit.edu/CS_CityIO_Frontend/";
 const BASE_URL: &str = "https://cityio.media.mit.edu";
 
+const BLACK_LIST_TABLE: [&str; 2] = ["clear", "update"];
+const BLACK_LIST_MODULE: [&str; 1] = ["meta"];
+
 #[get("/")]
 pub fn index() -> ActixResult<HttpResponse> {
     let redirect_url = Url::parse(CITY_SCOPE).unwrap();
@@ -38,6 +41,14 @@ pub fn get_table(
     state: web::Data<JSONState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let name = format!("{}", *name);
+
+    for b in &BLACK_LIST_TABLE {
+        if b == &name {
+            let mes = format!("table name: {} is not allowed", &name);
+            return fut_ok(not_acceptable(&mes));
+        }
+    }
+
     let map = state.lock().unwrap();
 
     debug!(" **get_table** {:?}", &name);
@@ -46,7 +57,7 @@ pub fn get_table(
         Some(v) => v,
         None => {
             let mes = format!("table '{}' not found", &name);
-            return fut_ok(HttpResponse::Ok().json(&err_json(&mes)));
+            return fut_ok(not_acceptable(&mes));
         }
     };
 
@@ -59,6 +70,13 @@ pub fn deep_get(
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let (name, mut field) = path.to_owned();
 
+    for b in &BLACK_LIST_TABLE {
+        if b == &name {
+            let mes = format!("table name: {} is not allowed", &name);
+            return fut_ok(not_acceptable(&mes));
+        }
+    }
+
     let map = state.lock().unwrap();
 
     debug!("**get_table_field** {:?}", &name);
@@ -67,7 +85,7 @@ pub fn deep_get(
         Some(v) => v,
         None => {
             let mes = format!("table '{}' not found", &name);
-            return fut_ok(HttpResponse::Ok().json(&err_json(&mes)));
+            return fut_ok(not_acceptable(&mes));
         }
     };
 
@@ -88,7 +106,7 @@ pub fn deep_get(
             Some(d) => data = d,
             None => {
                 let mes = format!("table '{}' does not include field '{}'", &name, &f);
-                return fut_ok(HttpResponse::Ok().json(err_json(&mes)));
+                return fut_ok(not_acceptable(&mes));
             }
         }
     }
@@ -104,6 +122,13 @@ pub fn set_table(
         // body is loaded, now we can deserialize json-rust
         let name = format!("{}", *name);
 
+        for b in &BLACK_LIST_TABLE {
+            if b == &name {
+                let mes = format!("table name: {} is not allowed", &name);
+                return Ok(not_acceptable(&mes));
+            }
+        }
+
         debug!("**set_table** {:?}", &name);
 
         let mut result: JSONObject = match serde_json::from_slice(&body) {
@@ -111,7 +136,7 @@ pub fn set_table(
             Err(e) => {
                 let mes = format!("error parsing to json: {}", &e);
                 warn!("json parse error.");
-                return Ok(HttpResponse::Ok().json(err_json(&mes)));
+                return Ok(not_acceptable(&mes));
             }
         };
 
@@ -150,14 +175,27 @@ pub fn set_module(
 
         let (table_name, module_name) = path.to_owned();
 
+        for b in &BLACK_LIST_TABLE {
+            if b == &table_name {
+                let mes = format!("table name: {} is not allowed", &table_name);
+                return Ok(not_acceptable(&mes));
+            }
+        }
+
+        for b in &BLACK_LIST_MODULE {
+            if b == &module_name {
+                let mes = format!("module name: {} is not allowed", &module_name);
+                return Ok(not_acceptable(&mes));
+            }
+        }
+
         debug!("**set_module** {}/{}", &table_name, &module_name);
 
         let result: Value = match serde_json::from_slice(&body) {
             Ok(v) => v,
             Err(e) => {
                 let mes = format!("error parsing to json: {}", &e);
-                warn!("json parse error.");
-                return Ok(HttpResponse::Ok().json(err_json(&mes)));
+                return Ok(not_acceptable(&mes));
             }
         };
 
@@ -192,9 +230,9 @@ pub fn clear_table(
 ////////////////////////
 // helpers
 ////////////////////////
-fn err_json(mes: &str) -> Value {
-    json!({
+fn not_acceptable(mes:&str) -> HttpResponse {
+    HttpResponse::NotAcceptable().json(&json!({
         "status": "error",
-        "mes" : mes
-    })
+        "mes" : &mes}
+    ))
 }
