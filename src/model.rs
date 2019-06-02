@@ -35,4 +35,8 @@ impl Meta {
             apiv: apiv,
         }
     }
+
+    pub fn id(&self) -> String {
+        self.id.to_owned()
+    }
 }

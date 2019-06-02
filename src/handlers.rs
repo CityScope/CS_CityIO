@@ -5,6 +5,9 @@ use futures::future::ok as fut_ok;
 use futures::{Future, Stream};
 use log::{debug, warn};
 use serde_json::{json, Map, Value};
+use std::str;
+use std::sync::mpsc;
+use std::thread;
 use url::Url;
 
 const CITY_SCOPE: &str = "http://cityscope.media.mit.edu/CS_CityIO_Frontend/";
@@ -105,7 +108,7 @@ pub fn deep_get(
         match data.get(&f) {
             Some(d) => data = d,
             None => {
-                let mes = format!("table '{}' does not include field '{}'", &name, &f);
+                let mes = format!("data in table '{}' does not include field '{}'", &name, &f);
                 return fut_ok(not_acceptable(&mes));
             }
         }
@@ -120,6 +123,7 @@ pub fn set_table(
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     pl.concat2().from_err().and_then(move |body| {
         // body is loaded, now we can deserialize json-rust
+
         let name = format!("{}", *name);
 
         for b in &BLACK_LIST_TABLE {
@@ -140,26 +144,28 @@ pub fn set_table(
             }
         };
 
-        let mut map = state.lock().unwrap();
+        thread::spawn(move || {
+            let mut map = state.lock().unwrap();
 
-        let mut new_table = match map.get(&name) {
-            Some(t) => {
-                let mut tmp: Map<String, Value> = t.as_object().unwrap().to_owned();
-                result.remove("meta");
-                for (k, v) in result.iter() {
-                    tmp.insert(k.to_owned(), v.to_owned());
+            let mut new_table = match map.get(&name) {
+                Some(t) => {
+                    let mut tmp: Map<String, Value> = t.as_object().unwrap().to_owned();
+                    result.remove("meta");
+                    for (k, v) in result.iter() {
+                        tmp.insert(k.to_owned(), v.to_owned());
+                    }
+                    tmp
                 }
-                tmp
-            }
-            None => result,
-        };
+                None => result,
+            };
 
-        let meta = Meta::new(&format!("{:?}", &new_table));
-        new_table.insert("meta".to_owned(), json!(&meta));
+            let meta = Meta::new(&format!("{:?}", &new_table));
+            new_table.insert("meta".to_owned(), json!(&meta));
 
-        // let meta = Meta::new(&json!(result).to_string());
-        // result.insert("meta".to_string(), json!(meta));
-        map.insert(name, json!(&new_table));
+            // let meta = Meta::new(&json!(result).to_string());
+            // result.insert("meta".to_string(), json!(meta));
+            map.insert(name, json!(&new_table));
+        });
 
         Ok(HttpResponse::Ok().json(json!({"status":"ok"})))
     })
@@ -199,6 +205,13 @@ pub fn set_module(
             }
         };
 
+        let (tx, rx) = mpsc::channel();
+
+        thread::spawn(move || {
+            let meta = Meta::new(str::from_utf8(&body).unwrap());
+            tx.send(meta.id()).unwrap(); // -->
+        });
+
         let mut map = state.lock().unwrap();
 
         let mut current = match map.get(&table_name) {
@@ -207,9 +220,16 @@ pub fn set_module(
         };
 
         current.remove(&"meta".to_string());
-        current.insert(module_name, result);
+        current.insert(module_name.to_owned(), result);
 
-        let meta = Meta::new(&format!("{:?}", &current));
+        let mut meta = json!(Meta::new(&format!("{:?}", &current)));
+        let module_hash = rx.recv().unwrap(); // <--
+        meta.as_object_mut()
+            .unwrap()
+            .insert(module_name, json!(module_hash));
+
+        debug!("{:?}", &meta);
+
         current.insert("meta".to_string(), json!(meta));
         map.insert(table_name, json!(current));
 
@@ -230,7 +250,7 @@ pub fn clear_table(
 ////////////////////////
 // helpers
 ////////////////////////
-fn not_acceptable(mes:&str) -> HttpResponse {
+fn not_acceptable(mes: &str) -> HttpResponse {
     HttpResponse::NotAcceptable().json(&json!({
         "status": "error",
         "mes" : &mes}
