@@ -4,7 +4,7 @@ use actix_web::{get, web, Error, HttpResponse, Result as ActixResult};
 use futures::future::ok as fut_ok;
 use futures::{Future, Stream};
 use log::{debug, warn};
-use serde_json::{json, Map, Value};
+use serde_json::{from_str, json, Map, Value};
 use std::str;
 use std::sync::mpsc;
 use std::thread;
@@ -159,7 +159,8 @@ pub fn set_table(
                 None => result,
             };
 
-            let meta = Meta::new(&format!("{:?}", &new_table));
+            // let meta = Meta::new(&format!("{:?}", &new_table));
+            let meta = Meta::from_map(&new_table);
             new_table.insert("meta".to_owned(), json!(&meta));
 
             // let meta = Meta::new(&json!(result).to_string());
@@ -219,14 +220,22 @@ pub fn set_module(
             None => Map::new(),
         };
 
-        current.remove(&"meta".to_string());
+        // current.remove(&"meta".to_string());
         current.insert(module_name.to_owned(), result);
 
-        let mut meta = json!(Meta::new(&format!("{:?}", &current)));
+        // let mut meta = json!(Meta::new(&format!("{:?}", &current)));
+        let mut meta: Meta = match current.get("meta") {
+            Some(m) => from_str(&m.to_string()).unwrap(),
+            None => Meta::new("")
+        };
+
         let module_hash = rx.recv().unwrap(); // <--
-        meta.as_object_mut()
-            .unwrap()
-            .insert(module_name, json!(module_hash));
+        meta.hashes.insert(module_name.to_owned(), module_hash);
+        meta.update();
+
+        // meta.as_object_mut()
+        //     .unwrap()
+        //     .insert(module_name, json!(module_hash));
 
         debug!("{:?}", &meta);
 
