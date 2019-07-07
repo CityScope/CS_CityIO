@@ -5,7 +5,9 @@ authors = ["yasushi"]
 edition = "2018"
 
 [dependencies]
-actix-web = "1.0.0-alpha.4"
+actix-web= "1.0.0-alpha.4"
+actix-files= "0.1.3"
+actix-cors= "0.1.0"
 
 bytes = "0.4"
 futures = "0.1"

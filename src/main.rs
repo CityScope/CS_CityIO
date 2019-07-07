@@ -6,8 +6,10 @@ use std::env;
 use std::sync::{Arc, Mutex};
 
 use actix_web::http::{header};
-use actix_web::middleware::{cors::Cors, Logger, NormalizePath};
+use actix_web::middleware::{Logger, NormalizePath};
+use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
+use actix_files as fs;
 use log::info;
 
 use handlers::{clear_table, get_table, deep_get, index, list_tables, set_module, set_table};
@@ -70,7 +72,9 @@ fn main() -> std::io::Result<()> {
                 web::resource("/api/table/{name}/{tail:.*}")
                     .route(web::get().to_async(deep_get)),
             )
-            .service(index)
+            .service(
+                fs::Files::new("/", "./static").index_file("index.html"),
+            )
     })
     .bind(format!("127.0.0.1:{}", &port))
     .and_then(|result| {
