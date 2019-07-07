@@ -1,6 +1,6 @@
 use crate::model::{JSONObject, JSONState, Meta};
 use actix_web::http::{header, StatusCode};
-use actix_web::{get, web, Error, HttpResponse, Result as ActixResult};
+use actix_web::{get, web, Error, HttpRequest, HttpResponse, Result as ActixResult};
 use futures::future::ok as fut_ok;
 use futures::{Future, Stream};
 use log::{debug, warn};
@@ -9,6 +9,7 @@ use std::str;
 use std::sync::mpsc;
 use std::thread;
 use url::Url;
+use base64::{encode, decode};
 
 const CITY_SCOPE: &str = "http://cityscope.media.mit.edu/CS_CityIO_Frontend/";
 const BASE_URL: &str = "https://cityio.media.mit.edu";
@@ -254,6 +255,27 @@ pub fn clear_table(
     let mut map = state.lock().unwrap();
     map.remove(&name);
     fut_ok(HttpResponse::Ok().json(json!({"status":"ok"})))
+}
+
+////////////////////////
+// auth
+////////////////////////
+
+pub fn auth(req: HttpRequest) -> impl Future<Item = HttpResponse, Error = Error>
+{
+
+    let headers = req.headers();
+
+    let user = match headers.get("authenticate") {
+        Some(h) => {
+            let user = String::from_utf8(decode(&h).unwrap()).unwrap();
+            debug!("{:?}", user);
+        },
+        None => return fut_ok(HttpResponse::Ok().json(json!({"status": "'authenticate' field not found in header"}))),
+    };
+
+
+    fut_ok(HttpResponse::Ok().json(json!({"status": "found auth in header"})))
 }
 
 ////////////////////////

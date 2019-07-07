@@ -12,7 +12,7 @@ use actix_web::{web, App, HttpServer};
 use actix_files as fs;
 use log::info;
 
-use handlers::{clear_table, get_table, deep_get, index, list_tables, set_module, set_table};
+use handlers::{auth, clear_table, get_table, deep_get, index, list_tables, set_module, set_table};
 use model::JSONState;
 
 fn main() -> std::io::Result<()> {
@@ -72,6 +72,13 @@ fn main() -> std::io::Result<()> {
                 web::resource("/api/table/{name}/{tail:.*}")
                     .route(web::get().to_async(deep_get)),
             )
+
+            .service(
+                web::resource("/api/auth")
+                    .route(web::get().to_async(list_tables))
+                    .route(web::post().to_async(auth))
+            )
+
             .service(
                 fs::Files::new("/", "./static").index_file("index.html"),
             )
