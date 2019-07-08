@@ -74,7 +74,7 @@ fn main() -> std::io::Result<()> {
             )
 
             .service(
-                web::resource("/api/auth")
+                web::resource("/users/authenticate")
                     .route(web::get().to_async(list_tables))
                     .route(web::post().to_async(auth))
             )

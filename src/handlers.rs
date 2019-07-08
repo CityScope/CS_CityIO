@@ -1,6 +1,7 @@
 use crate::model::{JSONObject, JSONState, Meta};
 use actix_web::http::{header, StatusCode};
 use actix_web::{get, web, Error, HttpRequest, HttpResponse, Result as ActixResult};
+use base64::decode;
 use futures::future::ok as fut_ok;
 use futures::{Future, Stream};
 use log::{debug, warn};
@@ -9,7 +10,6 @@ use std::str;
 use std::sync::mpsc;
 use std::thread;
 use url::Url;
-use base64::{encode, decode};
 
 const CITY_SCOPE: &str = "http://cityscope.media.mit.edu/CS_CityIO_Frontend/";
 const BASE_URL: &str = "https://cityio.media.mit.edu";
@@ -43,6 +43,7 @@ pub fn list_tables(state: web::Data<JSONState>) -> impl Future<Item = HttpRespon
 pub fn get_table(
     name: web::Path<String>,
     state: web::Data<JSONState>,
+    req: HttpRequest,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let name = format!("{}", *name);
 
@@ -65,7 +66,29 @@ pub fn get_table(
         }
     };
 
-    fut_ok(HttpResponse::Ok().json(&data))
+    let user = match data.get("header").and_then(|header| header.get("user")) {
+        Some(user) => format!("{}", user).replace("\"", ""),
+        None => return fut_ok(HttpResponse::Ok().json(&data)),
+    };
+
+    debug!("user: {:?}", user);
+
+    let header = &req.headers();
+
+    match header.get("token") {
+        Some(token) => {
+            debug!("token {:?}", &token);
+            let token_str = token.to_str().unwrap();
+            if token_str == &user {
+                fut_ok(HttpResponse::Ok().json(&data))
+            } else {
+                fut_ok(HttpResponse::build(StatusCode::UNAUTHORIZED).finish())
+            }
+        }
+        None => fut_ok(HttpResponse::build(StatusCode::UNAUTHORIZED).finish()),
+    }
+
+    // fut_ok(HttpResponse::Ok().json(&data))
 }
 
 pub fn deep_get(
@@ -121,6 +144,7 @@ pub fn set_table(
     name: web::Path<String>,
     state: web::Data<JSONState>,
     pl: web::Payload,
+    req: HttpRequest,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     pl.concat2().from_err().and_then(move |body| {
         // body is loaded, now we can deserialize json-rust
@@ -144,6 +168,27 @@ pub fn set_table(
                 return Ok(not_acceptable(&mes));
             }
         };
+
+        match &result.get("header").and_then(|h| h.get("user")) {
+            Some(user) => {
+                let user = user.to_string();
+                let headers = &req.headers();
+                let token = match headers.get("token") {
+                    None => {
+                        return Ok(HttpResponse::build(StatusCode::UNAUTHORIZED).finish());
+                    },
+                    Some(t) => format!("{:?}",t)
+                };
+
+                debug!("{:?}, {:?}", &user, &token);
+
+                //TODO: lookup token and verify
+                if token != user {
+                    return Ok(HttpResponse::build(StatusCode::UNAUTHORIZED).finish());
+                }
+            }
+            None => (),
+        }
 
         thread::spawn(move || {
             let mut map = state.lock().unwrap();
@@ -227,16 +272,12 @@ pub fn set_module(
         // let mut meta = json!(Meta::new(&format!("{:?}", &current)));
         let mut meta: Meta = match current.get("meta") {
             Some(m) => from_str(&m.to_string()).unwrap(),
-            None => Meta::new("")
+            None => Meta::new(""),
         };
 
         let module_hash = rx.recv().unwrap(); // <--
         meta.hashes.insert(module_name.to_owned(), module_hash);
         meta.update();
-
-        // meta.as_object_mut()
-        //     .unwrap()
-        //     .insert(module_name, json!(module_hash));
 
         debug!("{:?}", &meta);
 
@@ -261,21 +302,40 @@ pub fn clear_table(
 // auth
 ////////////////////////
 
-pub fn auth(req: HttpRequest) -> impl Future<Item = HttpResponse, Error = Error>
-{
+struct User {
+    username: String,
+    password: String,
+}
 
+impl User {
+    pub fn new(combined: &str) -> User {
+        let sp: Vec<&str> = combined.split(":").collect();
+
+        User {
+            username: sp[0].to_owned(),
+            password: sp[1].to_owned(),
+        }
+    }
+}
+
+pub fn auth(req: HttpRequest) -> impl Future<Item = HttpResponse, Error = Error> {
     let headers = req.headers();
 
-    let user = match headers.get("authenticate") {
+    let user = match headers.get("Authorization") {
         Some(h) => {
-            let user = String::from_utf8(decode(&h).unwrap()).unwrap();
-            debug!("{:?}", user);
-        },
-        None => return fut_ok(HttpResponse::Ok().json(json!({"status": "'authenticate' field not found in header"}))),
+            let auth_header = format!("{:?}", &h).replace("\"", "");
+            let split: Vec<&str> = auth_header.split(" ").collect();
+            let user_str = String::from_utf8(decode(&split[1]).unwrap()).unwrap();
+            User::new(&user_str)
+        }
+        None => {
+            return fut_ok(
+                HttpResponse::Ok()
+                    .json(json!({"status": "'authenticate' field not found in header"})),
+            )
+        }
     };
-
-
-    fut_ok(HttpResponse::Ok().json(json!({"status": "found auth in header"})))
+    fut_ok(HttpResponse::Ok().json(json!({"token": &user.username})))
 }
 
 ////////////////////////
