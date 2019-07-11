@@ -33,10 +33,11 @@ function clearNames(url) {
 
 async function getTables() {
   let tableArray = [];
-  let cityIOurl = "https://cityio.media.mit.edu/api/tables/list";
-  const tables = await getCityIO(cityIOurl);
+  let cityIOurl = "http://cityio.media.mit.edu/api/tables/list";
 
-  infoDiv("Reading CityIO tables (API > V2.0)");
+  const tables = await getCityIO(cityIOurl);
+  console.log(tables);
+  infoDiv("Reading CityIO tables [at API + V2.0]");
 
   for (let thisTableName = 0; thisTableName < tables.length; thisTableName++) {
     let thisTable = await getCityIO(tables[thisTableName]);
@@ -46,10 +47,10 @@ async function getTables() {
         thisTableName +
           " of " +
           tables.length +
-          " tables: " +
+          " CityScope tables: " +
           clearNames(tables[thisTableName]).link(tables[thisTableName]) +
           " || Clear Table".link(
-            "https://cityio.media.mit.edu/api/table/clear/" +
+            "http://cityio.media.mit.edu/api/table/clear/" +
               clearNames(tables[thisTableName])
           )
       );
@@ -74,7 +75,7 @@ function makeMap(tablesArray) {
   var map = L.map("map").setView([51.505, -0.09], 1);
   // setup the map API
   L.tileLayer(
-    "https://api.mapbox.com/styles/v1/relnox/cjg1ixe5s2ubp2rl3eqzjz2ud/tiles/512/{z}/{x}/{y}?access_token=pk.eyJ1IjoicmVsbm94IiwiYSI6ImNqd2VwOTNtYjExaHkzeXBzYm1xc3E3dzQifQ.X8r8nj4-baZXSsFgctQMsg",
+    "http://api.mapbox.com/styles/v1/relnox/cjg1ixe5s2ubp2rl3eqzjz2ud/tiles/512/{z}/{x}/{y}?access_token=pk.eyJ1IjoicmVsbm94IiwiYSI6ImNqd2VwOTNtYjExaHkzeXBzYm1xc3E3dzQifQ.X8r8nj4-baZXSsFgctQMsg",
     {
       maxZoom: 15,
       minZoom: 2
