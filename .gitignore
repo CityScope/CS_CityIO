@@ -10,3 +10,11 @@ Cargo.lock
 **/*.rs.bk
 
 log.txt
+
+
+/.vscode
+/node_modules 
+/.cache
+.DS_Store
+/.vscode
+/dist
