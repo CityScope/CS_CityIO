@@ -11,7 +11,7 @@ use std::sync::mpsc;
 use std::thread;
 use url::Url;
 
-const CITY_SCOPE: &str = "http://cityscope.media.mit.edu/CS_CityIO_Frontend/";
+const CITY_SCOPE: &str = "https://cityscope.media.mit.edu/CS_CityIO/";
 const BASE_URL: &str = "https://cityio.media.mit.edu";
 
 const BLACK_LIST_TABLE: [&str; 2] = ["clear", "update"];

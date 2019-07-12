@@ -78,10 +78,8 @@ fn main() -> std::io::Result<()> {
                     .route(web::get().to_async(list_tables))
                     .route(web::post().to_async(auth))
             )
-
-            .service(
-                fs::Files::new("/", "./static").index_file("index.html"),
-            )
+            .service(index)
+                // fs::Files::new("/", "./static").index_file("index.html"),
     })
     .bind(format!("127.0.0.1:{}", &port))
     .and_then(|result| {
