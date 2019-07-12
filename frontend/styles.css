@@ -17,21 +17,22 @@
 }
 
 .log {
-  max-height: 20vw;
-  max-width: 25vw;
-  margin-bottom: 5vw;
+  max-height: 10vw;
+  max-width: 20vw;
   overflow: scroll;
   overflow-x: hidden;
   background-color: rgba(45, 57, 62, 0.466);
   font-family: "Roboto Condensed";
   color: rgb(180, 180, 180);
-  font-size: 14px;
+  font-size: 1vw;
   line-height: 1vw;
   z-index: 999;
-  -webkit-box-shadow: 0px 0px 61px 1px rgba(0, 0, 0, 0.75);
-  -moz-box-shadow: 0px 0px 61px 1px rgba(0, 0, 0, 0.75);
-  box-shadow: 0px 0px 61px 1px rgba(0, 0, 0, 0.75);
-  padding: 1vw;
+  -webkit-box-shadow: 0vw 0vw 0.5vw 0.5vw rgba(0, 0, 0, 0.5);
+  -moz-box-shadow: 0vw 0vw 0.5vw 0.5vw rgba(0, 0, 0, 0.5);
+  box-shadow: 0vw 0vw 2vw 1vw rgba(0, 0, 0, 0.5);
+  padding: 0.5vw;
+
+  margin-bottom: 5vw;
 }
 .log a:link {
   color: #ed5066;
@@ -44,7 +45,7 @@
 h1 {
   font-family: "Press Start 2P";
   color: #ed5066;
-  text-shadow: 5px 5px 20px #000000;
+  text-shadow: 1vw 1vw 2vw #000000;
   font-size: 3vw;
   line-height: 2.5vw;
   cursor: text;
@@ -53,7 +54,7 @@ h1 {
 h2 {
   font-family: "Roboto Condensed";
   color: rgb(134, 147, 151);
-  text-shadow: 3px 3px 20px #000000;
+  text-shadow: 1vw 1vw 1vw #000000;
   font-size: 1.2vw;
 }
 
@@ -68,8 +69,6 @@ h2 :hover {
 }
 
 body {
-  padding: 0px;
-  margin: 0px;
   color: white;
   background-color: #2d393e;
 }
@@ -85,36 +84,39 @@ body {
 
 /* https://gist.github.com/AnnoyingTechnology/191e888988242371699fb7870f0e379e */
 body.modal-open > :not(.modal) {
-  -webkit-filter: blur(5px);
-  -moz-filter: blur(5px);
-  -o-filter: blur(5px);
-  -ms-filter: blur(5px);
-  filter: blur(5px);
+  -webkit-filter: blur(1vw);
+  -moz-filter: blur(1vw);
+  -o-filter: blur(1vw);
+  -ms-filter: blur(1vw);
+  filter: blur(1vw);
 }
 
 .modal-content {
   background-color: #1f3f4783 !important;
-  /* text-align: center; */
 }
 .close {
   text-align: right;
-  color: white;
-  font-size: 4vw;
-  margin: 1vw;
+  color: rgb(204, 204, 204);
+  font-size: 5vw;
 }
 
-/* content  */
-
-.tableInfo {
-  margin: 1rem;
+.tableNameDiv {
   font-family: "Press Start 2P";
   color: rgb(218, 218, 218);
-  font-size: 30px;
-  line-height: 1.5em;
+  font-size: 3vw;
   z-index: 999;
 }
 
-.threeDiv {
+.deleteDiv {
+  font-family: "Press Start 2P";
+  font-size: 1vw;
+}
+
+.deleteDiv a {
+  color: #ed5066;
+}
+
+.tableHeaderDiv {
   font-family: "Roboto Condensed";
   color: rgb(173, 184, 187);
   width: 100%;
@@ -127,8 +129,8 @@ body.modal-open > :not(.modal) {
 }
 
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 70px;
+  width: 0.5vw;
+  height: 5vw;
   background-color: rgb(28, 36, 39);
 }
 
@@ -146,8 +148,8 @@ body.modal-open > :not(.modal) {
   font-family: "Roboto Condensed";
   background: #2d393e;
   color: #ed5066;
-  font-size: 14px;
-  line-height: 24px;
+  font-size: 1vw;
+  line-height: 2vw;
 }
 
 .leaflet-popup-tip {

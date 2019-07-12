@@ -7,7 +7,7 @@ import * as shadow from "/img/shadow.png";
 
 ////////////////////////////////////////////////////////////////////////////////////
 
-var updateInterval = 1000;
+var updateInterval = 2000;
 
 async function getCityIO(cityIOurl) {
   // GET method
@@ -33,36 +33,37 @@ function clearNames(url) {
 
 async function getTables() {
   let tableArray = [];
-  let cityIOurl = "http://cityio.media.mit.edu/api/tables/list";
-
+  let cityIOurl = "https://cityio.media.mit.edu/api/tables/list";
   const tables = await getCityIO(cityIOurl);
   console.log(tables);
-  infoDiv("Reading CityIO tables [at API + V2.0]");
 
-  for (let thisTableName = 0; thisTableName < tables.length; thisTableName++) {
-    let thisTable = await getCityIO(tables[thisTableName]);
-    //check id API v2 [to replace with proper check later]
-    if (thisTable.header) {
-      infoDiv(
-        thisTableName +
-          " of " +
-          tables.length +
-          " CityScope tables: " +
-          clearNames(tables[thisTableName]).link(tables[thisTableName]) +
-          " || Clear Table".link(
-            "http://cityio.media.mit.edu/api/table/clear/" +
-              clearNames(tables[thisTableName])
-          )
-      );
+  for (let i = 0; i < tables.length; i++) {
+    let thisTable = await getCityIO(tables[i]);
 
-      thisTable = thisTable.header;
-      tableArray.push({
-        url: tables[thisTableName],
-        name: thisTable.name,
-        lat: thisTable.spatial.latitude,
-        lon: thisTable.spatial.longitude
-      });
-    }
+    let thisTableName = clearNames(tables[i]);
+
+    infoDiv(
+      i +
+        " of " +
+        tables.length +
+        " CityScope tables: " +
+        clearNames(tables[i]).link(tables[i])
+    );
+
+    let thisTableHeader = thisTable.header;
+    let randPos = Math.random() * 10;
+    let tableSpatial = thisTableHeader
+      ? thisTableHeader.spatial
+      : {
+          latitude: 0,
+          longitude: randPos
+        };
+    tableArray.push({
+      url: tables[i],
+      name: thisTableName,
+      lat: tableSpatial.latitude,
+      lon: tableSpatial.longitude
+    });
   }
 
   makeMap(tableArray);
@@ -70,12 +71,10 @@ async function getTables() {
 ////////////////////////////////////////////////////////////////////////////////////
 
 function makeMap(tablesArray) {
-  infoDiv("----making map----");
-
   var map = L.map("map").setView([51.505, -0.09], 1);
   // setup the map API
   L.tileLayer(
-    "http://api.mapbox.com/styles/v1/relnox/cjg1ixe5s2ubp2rl3eqzjz2ud/tiles/512/{z}/{x}/{y}?access_token=pk.eyJ1IjoicmVsbm94IiwiYSI6ImNqd2VwOTNtYjExaHkzeXBzYm1xc3E3dzQifQ.X8r8nj4-baZXSsFgctQMsg",
+    "https://api.mapbox.com/styles/v1/relnox/cjg1ixe5s2ubp2rl3eqzjz2ud/tiles/512/{z}/{x}/{y}?access_token=pk.eyJ1IjoicmVsbm94IiwiYSI6ImNqd2VwOTNtYjExaHkzeXBzYm1xc3E3dzQifQ.X8r8nj4-baZXSsFgctQMsg",
     {
       maxZoom: 15,
       minZoom: 2
@@ -100,7 +99,7 @@ function makeMap(tablesArray) {
     popupAnchor: [0, 0],
     shadowUrl: shadow.default,
     shadowSize: [iconSize, iconSize],
-    shadowAnchor: [0, -20]
+    shadowAnchor: [0, -30]
   });
 
   for (var i = 0; i < tablesArray.length; i++) {
@@ -109,7 +108,7 @@ function makeMap(tablesArray) {
     url = clearNames(url);
 
     //create map marker
-    let marker = new L.marker([tablesArray[i].lon, tablesArray[i].lat], {
+    let marker = new L.marker([tablesArray[i].lat, tablesArray[i].lon], {
       icon: IOIcon
     })
       .bindPopup("CityScope " + url)
@@ -125,18 +124,24 @@ function makeMap(tablesArray) {
     marker.on("click", function() {
       //pass the marker data to setup method
       modalSetup(marker);
-      infoDiv("clicked " + url);
+      infoDiv("getting header for: " + url);
     });
   }
 
   // click event handler to creat a chart and show it in the popup
   async function modalSetup(m) {
     //get the divs for content
-    var infoDiv = document.getElementById("infoDiv");
+    var tableNameDiv = document.getElementById("tableNameDiv");
     //get the binded props
     let tableMeta = m.properties;
+    tableNameDiv.innerHTML = clearNames(m.properties.url);
+
+    var deleteDiv = document.getElementById("deleteDiv");
+    deleteDiv.innerHTML = "<a href=" + delLink + ">Remove Table</a>";
+
     //put prj name in div
-    infoDiv.innerHTML = clearNames(m.properties.url);
+    let delLink =
+      "https://cityio.media.mit.edu/api/table/clear/" + tableMeta.name;
 
     //stop update on modal close
     $("#modal").on("hide.bs.modal", function() {
@@ -158,18 +163,17 @@ function makeMap(tablesArray) {
 
 async function update(url) {
   const cityIOjson = await getCityIO(url);
-  infoDiv("last update: " + new Date(cityIOjson.meta.timestamp));
   // only show table header
   let jsonMerge = {};
   $.extend(jsonMerge, cityIOjson.meta, cityIOjson.header);
   let cityIOjsonString = JSON.stringify(jsonMerge, null, 2);
-  let threeDiv = document.getElementById("threeDiv");
-  threeDiv.innerHTML = "";
+  let tableHeaderDiv = document.getElementById("tableHeaderDiv");
+  tableHeaderDiv.innerHTML = "";
   //
   output(syntaxHighlight(cityIOjsonString));
   //
   function output(inp) {
-    threeDiv.appendChild(document.createElement("pre")).innerHTML = inp;
+    tableHeaderDiv.appendChild(document.createElement("pre")).innerHTML = inp;
   }
 }
 
