@@ -8,3 +8,5 @@ git add dist -f
 git commit -m "gh-pages commit"
 #push to subtree remote 
 git push origin `git subtree split --prefix dist master`:gh-pages --force
+# then remove the dist folder
+git rm -r dist -f
