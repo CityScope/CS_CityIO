@@ -11,7 +11,10 @@ Cargo.lock
 
 log.txt
 
+# environmental variables
+.env
 
+# for the frontend??
 /.vscode
 /node_modules 
 /.cache

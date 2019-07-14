@@ -9,7 +9,6 @@ use actix_web::http::{header};
 use actix_web::middleware::{Logger, NormalizePath};
 use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
-use actix_files as fs;
 use log::info;
 
 use handlers::{auth, clear_table, get_table, deep_get, index, list_tables, set_module, set_table};
@@ -30,6 +29,9 @@ fn main() -> std::io::Result<()> {
         Some(new_port) => port = new_port,
         None => port = "8080".to_string(),
     }
+
+    info!("starting server @ {}", &port);
+
     let hashmap: JSONState = Arc::new(Mutex::new(HashMap::new()));
 
     HttpServer::new(move || {
@@ -81,10 +83,6 @@ fn main() -> std::io::Result<()> {
             .service(index)
                 // fs::Files::new("/", "./static").index_file("index.html"),
     })
-    .bind(format!("127.0.0.1:{}", &port))
-    .and_then(|result| {
-        info!("server started, running @ {}", &port);
-        Ok(result)
-    })?
+    .bind(format!("127.0.0.1:{}", &port))?
     .run()
 }
