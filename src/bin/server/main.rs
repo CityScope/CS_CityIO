@@ -14,6 +14,13 @@ use log::info;
 use handlers::{auth, clear_table, get_table, deep_get, index, list_tables, set_module, set_table};
 use model::JSONState;
 
+use diesel::prelude::*;
+use diesel::r2d2::{self, ConnectionManager};
+use dotenv;
+
+type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
+
+
 fn main() -> std::io::Result<()> {
     if cfg!(debug_assertions) {
         std::env::set_var("RUST_LOG", "actix_web=info,cs_cityio_backend=debug");
@@ -23,8 +30,15 @@ fn main() -> std::io::Result<()> {
 
     env_logger::init();
 
-    let port: String;
+    dotenv::dotenv().ok();
 
+    let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL");
+    let manager = ConnectionManager::<PgConnection>::new(db_url);
+    let pool = r2d2::Pool::builder()
+        .build(manager)
+        .expect("Failed to create pool.");
+
+    let port: String;
     match env::args().nth(1) {
         Some(new_port) => port = new_port,
         None => port = "8080".to_string(),
@@ -37,6 +51,7 @@ fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .data(hashmap.clone())
+            .data(pool.clone())
             .wrap(Logger::default())
             .wrap(NormalizePath)
             .wrap(
