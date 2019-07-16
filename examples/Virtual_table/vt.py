@@ -5,6 +5,7 @@ import os
 import time
 import random
 import os
+import sys
 import slack
 from slack import WebClient
 import socket
@@ -15,10 +16,28 @@ import socket
 # SLACKBOT = xxxxx
 
 
+BASE_URL = "https://cityio.media.mit.edu"
+DEBUG = False
+
+# debug
+if len(sys.argv) > 1:
+    if sys.argv[1] == "DEBUG":
+        BASE_URL += "/test"
+        DEBUG = True
+    elif sys.argv[1] == "LOCAL":
+        BASE_URL = "http://localhost:8081"
+        DEBUG = True
+
+ # get user's IP
+
+
 def get_ip_address():
+
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.connect(("8.8.8.8", 80))
     return str(s.getsockname()[0])
+
+# get this app folder
 
 
 def get_folder_path():
@@ -35,7 +54,7 @@ def parse_json_file(field, PATH):
 
 
 def demo_grid():
-    PATH = 'cityio.json'
+    PATH = 'vt.json'
     type_arr = []
     cityio_json = parse_json_file('table', PATH)
 
@@ -56,8 +75,16 @@ def human_time(this_time):
 
 
 def send_slack_msg(msg):
+    if DEBUG:
+        print(msg)
+        return
+
     # connect to the api and create client
-    client = slack.WebClient('xoxb-...')
+    # ! replace slack token with the one from
+    # ! https://api.slack.com/apps/ALJ2FH9RV/install-on-team?
+
+    token = ''
+    client = slack.WebClient(token)
     # tst slack api
     client.api_call("auth.test")
     # send to slack
@@ -68,7 +95,7 @@ def send_slack_msg(msg):
 def loop():
     SEND_INTERVAL = timedelta(milliseconds=1000)
     last_sent = datetime.now()
-    API_ENDPOINT = "https://cityio.media.mit.edu/api/table/update/virtual_table"
+    API_ENDPOINT = BASE_URL + "/api/table/update/virtual_table"
     # test api error with 'https://httpstat.us/400'
     error_attempts_counter = 0
     first_error_time = None
@@ -91,7 +118,7 @@ def loop():
                 # notify slack
                 dead_msg = "cityIO might be down. so sad. it's dead since " + \
                     str(first_error_time) + ' attempt {}, retrying every {} now.'.format(
-                        error_attempts_counter, SEND_INTERVAL) + ' :sushi: :sake: ?'
+                        error_attempts_counter, SEND_INTERVAL)
                 send_slack_msg(dead_msg)
             else:
                 if cityio_status == 'dead':

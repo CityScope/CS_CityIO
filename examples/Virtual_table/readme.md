@@ -11,7 +11,7 @@ Minimal module to repeatedly reproduce cityIO `json` data and report issues with
 
 #Running
 
-`$ python3 virtual_table.py`
+`$ python3 vt.py`
 
 # Requirements
 
