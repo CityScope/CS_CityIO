@@ -137,11 +137,11 @@ function makeMap(tablesArray) {
     tableNameDiv.innerHTML = clearNames(m.properties.url);
 
     var deleteDiv = document.getElementById("deleteDiv");
-    deleteDiv.innerHTML = "<a href=" + delLink + ">Remove Table</a>";
-
     //put prj name in div
     let delLink =
       "https://cityio.media.mit.edu/api/table/clear/" + tableMeta.name;
+
+    deleteDiv.innerHTML = "<a href=" + delLink + ">Remove Table</a>";
 
     //stop update on modal close
     $("#modal").on("hide.bs.modal", function() {
