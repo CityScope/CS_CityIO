@@ -1,7 +1,15 @@
 table! {
-    tables (id) {
-        id -> Int4,
-        title -> Varchar,
+    heads (table_name) {
+        table_name -> Varchar,
+        table_hash -> Varchar,
+    }
+}
+
+table! {
+    tables (hash) {
+        hash -> Varchar,
+        table_name -> Varchar,
+        ts -> Timestamptz,
         data -> Jsonb,
     }
 }
@@ -15,7 +23,10 @@ table! {
     }
 }
 
+joinable!(heads -> tables (table_hash));
+
 allow_tables_to_appear_in_same_query!(
+    heads,
     tables,
     users,
 );

@@ -12,6 +12,8 @@ fn main() {
 
     // you need to come up with a good &base
 
+    let base = "Y2l0eWlvOjVXZ3Q4bmp3bFBrcQ==";
+
     let user = create_user(&connection, &base);
 
     println!("\n saved user {} with id {}", &user.username, &user.id);

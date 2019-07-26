@@ -1,7 +1,9 @@
 -- Your SQL goes here
+--
 
 CREATE TABLE tables (
-       ID SERIAL PRIMARY KEY,
-       title VARCHAR NOT NULL,
+       hash VARCHAR PRIMARY KEY,
+       table_name VARCHAR NOT NULL,
+       ts TIMESTAMPTZ NOT NULL DEFAULT now(),
        data JSONB NOT NULL
-)
+);
