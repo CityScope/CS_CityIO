@@ -41,7 +41,6 @@ impl Meta {
     pub fn from_map(map: &JSONObject) -> Meta {
 
         let mut hmap = HashMap::<String, String>::new();
-       
         for key in map.keys() {
             if key == "meta" {
                 continue;
@@ -57,12 +56,16 @@ impl Meta {
 
         let apiv = String::from("2.1");
 
-        Meta{
+        let mut m = Meta{
             id: "id".to_owned(),
             timestamp: now,
             apiv: apiv,
             hashes: hmap
-        }
+        };
+
+        m.update_id();
+
+        m
     }
 
     pub fn update(&mut self) {
@@ -72,6 +75,16 @@ impl Meta {
             .as_secs();
 
         self.timestamp = now;
+        self.update_id();
+    }
+
+    fn update_id(&mut self) {
+        let mut cat_mod_hash = String::new();
+        for h in self.hashes.values() {
+            cat_mod_hash.push_str(&h);
+        }
+
+        self.id = format_hash(&hash(&cat_mod_hash)).to_owned();
     }
 
     pub fn id(&self) -> String {
