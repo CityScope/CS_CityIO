@@ -20,6 +20,7 @@ table! {
         username -> Varchar,
         hash -> Varchar,
         ts -> Timestamptz,
+        is_super -> Bool,
     }
 }
 

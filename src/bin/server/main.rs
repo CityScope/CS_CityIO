@@ -18,8 +18,10 @@ use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
 use dotenv;
 
-type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
+use cs_cityio_backend::{connect, read_latest_tables};
+use cs_cityio_backend::models::Table;
 
+type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
 fn main() -> std::io::Result<()> {
     if cfg!(debug_assertions) {
@@ -44,9 +46,23 @@ fn main() -> std::io::Result<()> {
         None => port = "8080".to_string(),
     }
 
+    info!("retrieving tables from db");
+
+    let con = connect();
+    let tables: Vec<Table> = match read_latest_tables(&con) {
+        Some(t) => t,
+        None => Vec::new()
+    };
+
+    let mut m = HashMap::new();
+    for t in tables {
+        println!("{:?}", t.table_name);
+        m.insert(t.table_name, t.data);
+    }
+
     info!("starting server @ {}", &port);
 
-    let hashmap: JSONState = Arc::new(Mutex::new(HashMap::new()));
+    let hashmap: JSONState = Arc::new(Mutex::new(m));
 
     HttpServer::new(move || {
         App::new()

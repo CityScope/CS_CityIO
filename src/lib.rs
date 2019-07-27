@@ -77,6 +77,11 @@ pub fn send_table<'a>(
     Ok(())
 }
 
+pub fn read_users(con: &PgConnection) -> Result<Vec<User>, Error> {
+    use schema::users::dsl::*;
+    users.load::<User>(con)
+}
+
 pub fn update_table<'a> (
      con: &PgConnection,
     hash_value: &'a str,
@@ -140,7 +145,7 @@ pub fn delete_head<'a>(con: &PgConnection, name: &'a str) {
     println!("Deleted {:?}", result);
 }
 
-pub fn create_user<'a>(con: &PgConnection, base64: &'a str) -> User {
+pub fn create_user<'a>(con: &PgConnection, base64: &'a str, is_super: bool) -> User {
     use schema::users;
 
     let now: DateTime<Utc> = Utc::now();
@@ -164,10 +169,53 @@ pub fn create_user<'a>(con: &PgConnection, base64: &'a str) -> User {
         username: &username,
         ts: &now,
         hash: &hash,
+        is_super: is_super,
     };
 
     diesel::insert_into(users::table)
         .values(&new_user)
         .get_result(con)
         .expect("Error creating new user")
+}
+
+// pub fn read_latest_tables(con: &PgConnection) -> Vec<Table> {
+//     use schema::heads;
+//
+//
+// }
+
+
+pub fn read_heads(con: &PgConnection) -> Result<Vec<Head>, Error> {
+    use schema::heads::dsl::*;
+    heads.load::<Head>(con)
+}
+
+pub fn read_table_hash(con: &PgConnection, hash_value: &str) -> Result<Table, Error> {
+    use schema::tables::dsl::*;
+    tables.find(hash_value)
+        .get_result(con)
+}
+
+pub fn read_latest_tables(con: &PgConnection) -> Option<Vec<Table>>{
+    let heads = match read_heads(con) {
+        Ok(hs) => hs,
+        Err(e) => {
+            println!("Error, reading heads");
+            return None
+        }
+    };
+    let mut tables: Vec<Table> = Vec::new();
+    for h in heads {
+        let table = match read_table_hash(con, &h.table_hash) {
+            Ok(t) => t,
+            Err(e) => continue
+        };
+        tables.push(table);
+    }
+
+    if tables.len() != 0 {
+        Some(tables)
+    } else {
+        None // :(
+    }
 }
