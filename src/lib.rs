@@ -7,14 +7,13 @@ pub mod schema;
 use chrono::prelude::*;
 use diesel::dsl::{exists, select};
 use diesel::prelude::*;
-use diesel::PgConnection;
+use diesel::{PgConnection, result::Error, result::DatabaseErrorKind};
 use dotenv::dotenv;
 use serde_json::Value;
 use std::env;
 use std::str;
 
 use sha256::sha256::{format_hash, hash};
-
 use crate::models::{Head, NewHead, NewTable, NewUser, Table, User};
 
 pub fn connect() -> PgConnection {
@@ -30,7 +29,7 @@ pub fn create_table<'a>(
     hash_value: &'a str,
     table_name: &'a str,
     data: &'a Value,
-) -> Table {
+) -> Result<Table, Error> {
     use schema::tables;
 
     let new_table = NewTable {
@@ -42,8 +41,54 @@ pub fn create_table<'a>(
     diesel::insert_into(tables::table)
         .values(&new_table)
         .get_result(con)
-        .expect("Error creating new table")
 }
+
+pub fn send_table<'a>(
+    con: &PgConnection,
+    hash_value: &'a str,
+    table_name: &'a str,
+    data: &'a Value,
+) -> Result<(), Error> {
+
+    let table = match update_table(&con, &hash_value, &data) {
+        Ok(t) => t,
+        Err(e) => {
+            match create_table(&con, &hash_value, &table_name, &data) {
+                Ok(t) => t,
+                Err(e) => return Err(e),
+            }
+        },
+    };
+
+    println!("sent table: {}", &table.table_name);
+
+    let head = match update_head(&con, &table.table_name, &table.hash) {
+        Ok(h) => h,
+        Err(e) => {
+            match create_head(&con, &table.table_name, &table.hash) {
+                Ok(h) => h,
+                Err(e) => return Err(e)
+            }
+        }
+    };
+
+    println!("updated head: {}", &table.table_name);
+
+    Ok(())
+}
+
+pub fn update_table<'a> (
+     con: &PgConnection,
+    hash_value: &'a str,
+    new_data: &'a Value,
+) -> Result<Table, Error>{
+// ){
+    use schema::tables::dsl::*;
+    diesel::update(tables.find(&hash_value))
+        .set(data.eq(&new_data))
+        .get_result::<Table>(con)
+}
+
 
 pub fn delete_table<'a>(con: &PgConnection, hash_value: &'a str){
     use schema::tables::dsl::{tables};
@@ -53,7 +98,6 @@ pub fn delete_table<'a>(con: &PgConnection, hash_value: &'a str){
         .expect("Error deleting table");
 
     println!("{:?}", result);
-   
 }
 
 pub fn check_head<'a>(con: &PgConnection, name: &'a str) -> bool {
@@ -64,7 +108,8 @@ pub fn check_head<'a>(con: &PgConnection, name: &'a str) -> bool {
         .expect("Error checking existance")
 }
 
-pub fn create_head<'a>(con: &PgConnection, name: &'a str, hash_value: &'a str) -> Head {
+pub fn create_head<'a>(con: &PgConnection, name: &'a str, hash_value: &'a str)
+-> Result<Head, Error> {
     use schema::heads;
 
     let new_head = NewHead{
@@ -75,20 +120,14 @@ pub fn create_head<'a>(con: &PgConnection, name: &'a str, hash_value: &'a str) -
     diesel::insert_into(heads::table)
         .values(&new_head)
         .get_result(con)
-        .expect("Error creating new head")
 }
 
-pub fn update_head<'a>(con: &PgConnection, name: &'a str, hash_value: &'a str) -> Head {
+pub fn update_head<'a>(con: &PgConnection, name: &'a str, hash_value: &'a str) -> Result<Head, Error> {
     use schema::heads::dsl::{heads, table_hash};
 
-    let head = diesel::update(heads.find(&name))
+    diesel::update(heads.find(&name))
         .set(table_hash.eq(hash_value))
         .get_result::<Head>(con)
-        .expect("Error updating head hash");
-
-    println!("new hash for {} is {}", head.table_name, head.table_hash);
-
-    head
 }
 
 pub fn delete_head<'a>(con: &PgConnection, name: &'a str) {
