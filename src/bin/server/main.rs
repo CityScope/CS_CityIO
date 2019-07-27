@@ -18,8 +18,8 @@ use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
 use dotenv;
 
-use cs_cityio_backend::{connect, read_latest_tables};
-use cs_cityio_backend::models::Table;
+use cs_cityio_backend::{connect, read_users, read_latest_tables};
+use cs_cityio_backend::models::{User, Table};
 
 type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
@@ -60,9 +60,22 @@ fn main() -> std::io::Result<()> {
         m.insert(t.table_name, t.data);
     }
 
+    let users: Vec<User> = match read_users(&con) {
+        Ok(us) => us,
+        Err(_e) => Vec::new()
+    };
+
+    // let n = HashMap::new();
+    for u in users {
+        println!("{:?}", u);
+    }
+
+    let mut hm = HashMap::new();
+    hm.insert("tables".to_string(), m);
+
     info!("starting server @ {}", &port);
 
-    let hashmap: JSONState = Arc::new(Mutex::new(m));
+    let hashmap: JSONState = Arc::new(Mutex::new(hm));
 
     HttpServer::new(move || {
         App::new()

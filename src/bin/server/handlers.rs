@@ -27,8 +27,8 @@ pub fn index() -> ActixResult<HttpResponse> {
 }
 
 pub fn list_tables(state: web::Data<JSONState>) -> impl Future<Item = HttpResponse, Error = Error> {
-    let tables = state.lock().unwrap();
-
+    let map = state.lock().unwrap();
+    let tables = map.get("tables").unwrap();
     let mut names: Vec<String> = Vec::new();
     let mut url = Url::parse(BASE_URL).unwrap();
 
@@ -55,10 +55,11 @@ pub fn get_table(
     }
 
     let map = state.lock().unwrap();
+    let tables = map.get("tables").unwrap();
 
     debug!(" **get_table** {:?}", &name);
 
-    let data = match map.get(&name) {
+    let data = match tables.get(&name) {
         Some(v) => v,
         None => {
             let mes = format!("table '{}' not found", &name);
@@ -105,10 +106,11 @@ pub fn deep_get(
     }
 
     let map = state.lock().unwrap();
+    let tables = map.get("tables").unwrap();
 
     debug!("**get_table_field** {:?}", &name);
 
-    let table_data = match map.get(&name) {
+    let table_data = match tables.get(&name) {
         Some(v) => v,
         None => {
             let mes = format!("table '{}' not found", &name);
@@ -192,8 +194,9 @@ pub fn set_table(
 
         thread::spawn(move || {
             let mut map = state.lock().unwrap();
+            let tables = map.get_mut("tables").unwrap();
 
-            let mut new_table = match map.get(&name) {
+            let mut new_table = match tables.get(&name) {
                 Some(t) => {
                     let mut tmp: Map<String, Value> = t.as_object().unwrap().to_owned();
                     result.remove("meta");
@@ -211,7 +214,7 @@ pub fn set_table(
 
             // let meta = Meta::new(&json!(result).to_string());
             // result.insert("meta".to_string(), json!(meta));
-            map.insert(name, json!(&new_table));
+            tables.insert(name, json!(&new_table));
         });
 
         Ok(HttpResponse::Ok().json(json!({"status":"ok"})))
@@ -260,8 +263,9 @@ pub fn set_module(
         });
 
         let mut map = state.lock().unwrap();
+        let tables = map.get_mut("tables").unwrap();
 
-        let mut current = match map.get(&table_name) {
+        let mut current = match tables.get(&table_name) {
             Some(t) => t.as_object().unwrap().to_owned(),
             None => Map::new(),
         };
@@ -282,7 +286,7 @@ pub fn set_module(
         debug!("{:?}", &meta);
 
         current.insert("meta".to_string(), json!(meta));
-        map.insert(table_name, json!(current));
+        tables.insert(table_name, json!(current));
 
         Ok(HttpResponse::Ok().json(json!({"status":"ok"})))
     })
@@ -294,7 +298,8 @@ pub fn clear_table(
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let name = format!("{}", *name);
     let mut map = state.lock().unwrap();
-    map.remove(&name);
+    let tables = map.get_mut("tables").unwrap();
+    tables.remove(&name);
     fut_ok(HttpResponse::Ok().json(json!({"status":"ok"})))
 }
 

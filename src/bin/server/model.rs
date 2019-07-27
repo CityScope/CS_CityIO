@@ -7,7 +7,7 @@ use serde_json::{Map, Value};
 
 use sha256::sha256::{format_hash, hash};
 
-pub type JSONState = Arc<Mutex<HashMap<String, Value>>>;
+pub type JSONState = Arc<Mutex<HashMap<String, HashMap<String, Value>>>>;
 pub type JSONObject = Map<String, Value>;
 
 #[derive(Serialize, Deserialize)]
