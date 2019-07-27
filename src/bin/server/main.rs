@@ -12,11 +12,13 @@ use actix_web::{web, App, HttpServer};
 use log::info;
 
 use handlers::{auth, clear_table, get_table, deep_get, index, list_tables, set_module, set_table};
-use model::JSONState;
+use model::{JSONState, JsonUser};
 
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
 use dotenv;
+
+use serde_json::json;
 
 use cs_cityio_backend::{connect, read_users, read_latest_tables};
 use cs_cityio_backend::models::{User, Table};
@@ -65,13 +67,20 @@ fn main() -> std::io::Result<()> {
         Err(_e) => Vec::new()
     };
 
-    // let n = HashMap::new();
+    let mut n = HashMap::new();
     for u in users {
-        println!("{:?}", u);
+        let ju = JsonUser{
+            name: u.username,
+            hash: u.hash.to_owned(),
+            is_super: u.is_super,
+        };
+        n.insert(u.hash, json!(ju));
     }
 
     let mut hm = HashMap::new();
+
     hm.insert("tables".to_string(), m);
+    hm.insert("users".to_string(), n);
 
     info!("starting server @ {}", &port);
 

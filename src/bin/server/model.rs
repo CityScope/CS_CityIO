@@ -91,3 +91,10 @@ impl Meta {
         self.id.to_owned()
     }
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct JsonUser {
+    pub name: String,
+    pub hash: String,
+    pub is_super: bool,
+}
