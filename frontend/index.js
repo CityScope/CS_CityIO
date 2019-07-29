@@ -9,23 +9,23 @@ import * as shadow from "/img/shadow.png";
 
 var updateInterval = 2000;
 
-async function getCityIO(cityIOurl) {
-  // GET method
-  return $.ajax({
-    url: cityIOurl,
-    dataType: "JSON",
-    callback: "jsonData",
-    type: "GET",
-    success: function(d) {
-      return d;
-    },
-    // or error
-    error: function(e) {
-      console.log("GET error: " + e.status.toString());
-      infoDiv("GET error: " + e.status.toString());
-    }
-  });
+/**
+ * get cityIO method [uses polyfill]
+ * @param cityIOtableURL cityIO API endpoint URL
+ */
+async function getCityIO(url, myHeaders) {
+  return fetch(url, myHeaders)
+    .then(function(response) {
+      return response.json();
+    })
+    .then(function(cityIOdata) {
+      return cityIOdata;
+    })
+    .catch(err => {
+      console.log(err);
+    });
 }
+
 function clearNames(url) {
   return url.toString().replace("https://cityio.media.mit.edu/api/table/", "");
 }
@@ -34,36 +34,41 @@ function clearNames(url) {
 async function getTables() {
   let tableArray = [];
   let cityIOurl = "https://cityio.media.mit.edu/api/tables/list";
+
   const tables = await getCityIO(cityIOurl);
   console.log(tables);
 
   for (let i = 0; i < tables.length; i++) {
     let thisTable = await getCityIO(tables[i]);
+    // make sure we can actually GET the table now
+    if (thisTable) {
+      console.log(thisTable);
 
-    let thisTableName = clearNames(tables[i]);
+      let thisTableName = clearNames(tables[i]);
 
-    infoDiv(
-      i +
-        " of " +
-        tables.length +
-        " CityScope tables: " +
-        clearNames(tables[i]).link(tables[i])
-    );
+      infoDiv(
+        i +
+          " of " +
+          tables.length +
+          " CityScope tables: " +
+          clearNames(tables[i]).link(tables[i])
+      );
 
-    let thisTableHeader = thisTable.header;
-    let randPos = Math.random() * 10;
-    let tableSpatial = thisTableHeader
-      ? thisTableHeader.spatial
-      : {
-          latitude: 0,
-          longitude: randPos
-        };
-    tableArray.push({
-      url: tables[i],
-      name: thisTableName,
-      lat: tableSpatial.latitude,
-      lon: tableSpatial.longitude
-    });
+      let thisTableHeader = thisTable.header;
+      let randPos = Math.random() * 10;
+      let tableSpatial = thisTableHeader
+        ? thisTableHeader.spatial
+        : {
+            latitude: 0,
+            longitude: randPos
+          };
+      tableArray.push({
+        url: tables[i],
+        name: thisTableName,
+        lat: tableSpatial.latitude,
+        lon: tableSpatial.longitude
+      });
+    }
   }
 
   makeMap(tableArray);
@@ -220,3 +225,10 @@ function infoDiv(text) {
 // APP START
 //////////////////////////////////////////
 getTables();
+
+const myHeaders = new Headers({
+  Authorization:
+    "token: 86c1e6d8f574a51896bf02e8622b858d573b8afd4e583d3b9258cfe8ed336ee7"
+});
+
+getCityIO("https://cityio.media.mit.edu/api/table/hidden_table", myHeaders);
