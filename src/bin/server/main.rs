@@ -12,14 +12,18 @@ use actix_web::{web, App, HttpServer};
 use log::info;
 
 use handlers::{auth, clear_table, get_table, deep_get, index, list_tables, set_module, set_table};
-use model::JSONState;
+use model::{JSONState, JsonUser};
 
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
 use dotenv;
 
-type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
+use serde_json::json;
 
+use cs_cityio_backend::{connect, read_users, read_latest_tables};
+use cs_cityio_backend::models::{User, Table};
+
+type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
 fn main() -> std::io::Result<()> {
     if cfg!(debug_assertions) {
@@ -44,9 +48,43 @@ fn main() -> std::io::Result<()> {
         None => port = "8080".to_string(),
     }
 
+    info!("retrieving tables from db");
+
+    let con = connect();
+    let tables: Vec<Table> = match read_latest_tables(&con) {
+        Some(t) => t,
+        None => Vec::new()
+    };
+
+    let mut m = HashMap::new();
+    for t in tables {
+        println!("{:?}", t.table_name);
+        m.insert(t.table_name, t.data);
+    }
+
+    let users: Vec<User> = match read_users(&con) {
+        Ok(us) => us,
+        Err(_e) => Vec::new()
+    };
+
+    let mut n = HashMap::new();
+    for u in users {
+        let ju = JsonUser{
+            name: u.username,
+            hash: u.hash.to_owned(),
+            is_super: u.is_super,
+        };
+        n.insert(u.hash, json!(ju));
+    }
+
+    let mut hm = HashMap::new();
+
+    hm.insert("tables".to_string(), m);
+    hm.insert("users".to_string(), n);
+
     info!("starting server @ {}", &port);
 
-    let hashmap: JSONState = Arc::new(Mutex::new(HashMap::new()));
+    let hashmap: JSONState = Arc::new(Mutex::new(hm));
 
     HttpServer::new(move || {
         App::new()

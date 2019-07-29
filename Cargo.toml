@@ -1,6 +1,6 @@
 [package]
 name = "cs_cityio_backend"
-version = "0.1.0"
+version = "0.5.0"
 authors = ["yasushi"]
 edition = "2018"
 

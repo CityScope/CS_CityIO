@@ -16,7 +16,7 @@ fn main() {
 
     println!("Displaying {} tables", results.len());
     for table  in results {
-        println!("{}", table.title);
+        println!("{}", table.table_name);
         println!("---------------\n");
         println!("{:?}", table.data);
     }

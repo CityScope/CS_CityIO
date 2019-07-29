@@ -1,5 +1,5 @@
-use crate::model::{JSONObject, JSONState, Meta};
-use actix_web::http::{header, StatusCode};
+use crate::model::{JSONObject, JSONState, Meta, JsonUser};
+use actix_web::http::{header, StatusCode, header::HeaderMap};
 use actix_web::{get, web, Error, HttpRequest, HttpResponse, Result as ActixResult};
 use base64::decode;
 use futures::future::ok as fut_ok;
@@ -7,6 +7,7 @@ use futures::{Future, Stream};
 use log::{debug, warn};
 use serde_json::{from_str, json, Map, Value};
 use std::str;
+use std::collections::HashMap;
 use std::sync::mpsc;
 use std::thread;
 use url::Url;
@@ -27,8 +28,8 @@ pub fn index() -> ActixResult<HttpResponse> {
 }
 
 pub fn list_tables(state: web::Data<JSONState>) -> impl Future<Item = HttpResponse, Error = Error> {
-    let tables = state.lock().unwrap();
-
+    let map = state.lock().unwrap();
+    let tables = map.get("tables").unwrap();
     let mut names: Vec<String> = Vec::new();
     let mut url = Url::parse(BASE_URL).unwrap();
 
@@ -55,10 +56,11 @@ pub fn get_table(
     }
 
     let map = state.lock().unwrap();
+    let tables = map.get("tables").unwrap();
 
     debug!(" **get_table** {:?}", &name);
 
-    let data = match map.get(&name) {
+    let data = match tables.get(&name) {
         Some(v) => v,
         None => {
             let mes = format!("table '{}' not found", &name);
@@ -66,34 +68,39 @@ pub fn get_table(
         }
     };
 
-    let user = match data.get("header").and_then(|header| header.get("user")) {
+    let table_user = match data.get("header").and_then(|header| header.get("user")) {
         Some(user) => format!("{}", user).replace("\"", ""),
+        // public
         None => return fut_ok(HttpResponse::Ok().json(&data)),
     };
 
-    debug!("user: {:?}", user);
-
+    let users = map.get("users").unwrap();
     let header = &req.headers();
 
-    match header.get("token") {
-        Some(token) => {
-            debug!("token {:?}", &token);
-            let token_str = token.to_str().unwrap();
-            if token_str == &user {
-                fut_ok(HttpResponse::Ok().json(&data))
-            } else {
-                fut_ok(HttpResponse::build(StatusCode::UNAUTHORIZED).finish())
-            }
-        }
-        None => fut_ok(HttpResponse::build(StatusCode::UNAUTHORIZED).finish()),
+    if (check_auth(&table_user, &header, users)) {
+        fut_ok(HttpResponse::Ok().json(&data))
+    } else {
+        fut_ok(HttpResponse::build(StatusCode::UNAUTHORIZED).finish())
     }
+}
 
-    // fut_ok(HttpResponse::Ok().json(&data))
+pub fn check_auth(table_user: &str, header: &HeaderMap, users: &HashMap<String, Value>) -> bool {
+    let token = match header.get("token") {
+        Some(t) => t.to_str().unwrap(),
+        None => return false
+    };
+
+    let user: JsonUser = match users.get(token) {
+        Some(t) => serde_json::from_str(&t.to_string()).unwrap(),
+        None => return false
+    };
+    &user.name == table_user || user.is_super
 }
 
 pub fn deep_get(
     path: web::Path<(String, String)>,
     state: web::Data<JSONState>,
+    req: HttpRequest,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let (name, mut field) = path.to_owned();
 
@@ -105,16 +112,29 @@ pub fn deep_get(
     }
 
     let map = state.lock().unwrap();
+    let tables = map.get("tables").unwrap();
 
     debug!("**get_table_field** {:?}", &name);
 
-    let table_data = match map.get(&name) {
+    let table_data = match tables.get(&name) {
         Some(v) => v,
         None => {
             let mes = format!("table '{}' not found", &name);
             return fut_ok(not_acceptable(&mes));
         }
     };
+
+    match &table_data.get("header").and_then(|h|{h.get("user")}) {
+        None => (), // public
+        Some(u) => {
+            let users = map.get("users").unwrap();
+            let header = &req.headers();
+            match check_auth(u.as_str().unwrap(), &header, users) {
+                true => (),
+                false => return fut_ok(HttpResponse::build(StatusCode::UNAUTHORIZED).finish())
+            }
+        }
+    }
 
     // is field empty??
     if &field == "" {
@@ -151,6 +171,9 @@ pub fn set_table(
 
         let name = format!("{}", *name);
 
+        let tmp_state = state.to_owned();
+        let map = tmp_state.lock().unwrap();
+
         for b in &BLACK_LIST_TABLE {
             if b == &name {
                 let mes = format!("table name: {} is not allowed", &name);
@@ -170,30 +193,23 @@ pub fn set_table(
         };
 
         match &result.get("header").and_then(|h| h.get("user")) {
-            Some(user) => {
-                let user = user.to_string();
+            None => (),
+            Some(u) => {
+                let table_user = u.as_str().unwrap();
+                let users = map.get("users").unwrap();
                 let headers = &req.headers();
-                let token = match headers.get("token") {
-                    None => {
-                        return Ok(HttpResponse::build(StatusCode::UNAUTHORIZED).finish());
-                    },
-                    Some(t) => format!("{:?}",t)
-                };
-
-                debug!("{:?}, {:?}", &user, &token);
-
-                //TODO: lookup token and verify
-                if token != user {
-                    return Ok(HttpResponse::build(StatusCode::UNAUTHORIZED).finish());
+                match check_auth(table_user, headers, users) {
+                    true => (),
+                    false => return Ok(HttpResponse::build(StatusCode::UNAUTHORIZED).finish())
                 }
             }
-            None => (),
         }
 
         thread::spawn(move || {
             let mut map = state.lock().unwrap();
+            let tables = map.get_mut("tables").unwrap();
 
-            let mut new_table = match map.get(&name) {
+            let mut new_table = match tables.get(&name) {
                 Some(t) => {
                     let mut tmp: Map<String, Value> = t.as_object().unwrap().to_owned();
                     result.remove("meta");
@@ -211,7 +227,7 @@ pub fn set_table(
 
             // let meta = Meta::new(&json!(result).to_string());
             // result.insert("meta".to_string(), json!(meta));
-            map.insert(name, json!(&new_table));
+            tables.insert(name, json!(&new_table));
         });
 
         Ok(HttpResponse::Ok().json(json!({"status":"ok"})))
@@ -222,6 +238,7 @@ pub fn set_module(
     path: web::Path<(String, String)>,
     state: web::Data<JSONState>,
     pl: web::Payload,
+    req: HttpRequest,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     pl.concat2().from_err().and_then(move |body| {
         // body is loaded, now we can deserialize json-rust
@@ -260,11 +277,25 @@ pub fn set_module(
         });
 
         let mut map = state.lock().unwrap();
+        let users = map.get("users").unwrap().to_owned();
+        let tables = &mut map.get_mut("tables").unwrap();
 
-        let mut current = match map.get(&table_name) {
+        let mut current = match tables.get(&table_name) {
             Some(t) => t.as_object().unwrap().to_owned(),
             None => Map::new(),
         };
+
+        match &current.get("header").and_then(|h| h.get("user")) {
+            None => (),
+            Some(u) => {
+                let table_user = u.as_str().unwrap();
+                let headers = &req.headers();
+                match check_auth(table_user, headers, &users) {
+                    true => (),
+                    false => return Ok(HttpResponse::build(StatusCode::UNAUTHORIZED).finish())
+                }
+            }
+        }
 
         // current.remove(&"meta".to_string());
         current.insert(module_name.to_owned(), result);
@@ -282,7 +313,7 @@ pub fn set_module(
         debug!("{:?}", &meta);
 
         current.insert("meta".to_string(), json!(meta));
-        map.insert(table_name, json!(current));
+        tables.insert(table_name, json!(current));
 
         Ok(HttpResponse::Ok().json(json!({"status":"ok"})))
     })
@@ -291,10 +322,28 @@ pub fn set_module(
 pub fn clear_table(
     name: web::Path<String>,
     state: web::Data<JSONState>,
+    req: HttpRequest,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let name = format!("{}", *name);
     let mut map = state.lock().unwrap();
-    map.remove(&name);
+    let user_map = map.to_owned();
+    let users = user_map.get("users").unwrap();
+    let tables = map.get_mut("tables").unwrap();
+
+    let table_data = &tables.get(&name).unwrap();
+
+    match &table_data.get("header").and_then(|h|{h.get("user")}) {
+        None => (), // public
+        Some(u) => {
+            let header = &req.headers();
+            match check_auth(u.as_str().unwrap(), &header, users) {
+                true => (),
+                false => return fut_ok(HttpResponse::build(StatusCode::UNAUTHORIZED).finish())
+            }
+        }
+    }
+
+    tables.remove(&name);
     fut_ok(HttpResponse::Ok().json(json!({"status":"ok"})))
 }
 
