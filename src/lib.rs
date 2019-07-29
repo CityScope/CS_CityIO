@@ -15,6 +15,7 @@ use std::str;
 
 use sha256::sha256::{format_hash, hash};
 use crate::models::{Head, NewHead, NewTable, NewUser, Table, User};
+use base64::decode;
 
 pub fn connect() -> PgConnection {
     dotenv().ok();
@@ -152,7 +153,7 @@ pub fn create_user<'a>(con: &PgConnection, base64: &'a str, is_super: bool) -> U
 
     let base = base64.to_owned();
 
-    let b = base64::decode(base64).expect("Error decoding base64");
+    let b = decode(base64).expect("Error decoding base64");
     let comb = str::from_utf8(&b)
         .expect("Error converting to UTF-8")
         .to_string(); // "username:password"
@@ -178,12 +179,61 @@ pub fn create_user<'a>(con: &PgConnection, base64: &'a str, is_super: bool) -> U
         .expect("Error creating new user")
 }
 
-// pub fn read_latest_tables(con: &PgConnection) -> Vec<Table> {
-//     use schema::heads;
-//
-//
-// }
+pub fn delete_user(con: &PgConnection, id: i32) {
+    use schema::users::dsl::users;
 
+    let result = diesel::delete(users.find(id))
+        .execute(con)
+        .expect("Error deleting users");
+
+    println!("Deleted {:?}", result);
+}
+
+pub fn delete_users<'a>(con: &PgConnection, name:&'a str) {
+    use schema::users::dsl::{users, id, username};
+
+    let us = users.filter(username.eq(name)).load::<User>(con).unwrap();
+
+    for u in us {
+        diesel::delete(users.find(u.id)).execute(con).unwrap();
+    }
+}
+
+pub fn auth_user<'a>(con: &PgConnection, base64:&'a str) -> Option<User> {
+    use schema::users::dsl::{users, username};
+    let b = match decode(base64) {
+        Ok(b) => b,
+        Err(e) => {
+            println!("Error Decoding Base64 String");
+            return None
+        }
+    };
+
+    let name_pass: Vec<&str> = str::from_utf8(&b)
+        .expect("Error converting to utf")
+        .split(":")
+        .collect();
+
+    println!("{:?}", name_pass);
+
+    let usrs = match users.filter(username.eq(&name_pass[0])).load::<User>(con){
+        Ok(u) => u,
+        Err(e) => {
+            println!("Error getting users");
+            return None
+        }
+    };
+
+    for u in usrs {
+        let base = format!("{} {:?}", base64.to_owned(), u.ts);
+        let base_hashed = format_hash(&hash(&base));
+        if base_hashed == u.hash {
+            return Some(u);
+        }
+    }
+
+    None
+}
 
 pub fn read_heads(con: &PgConnection) -> Result<Vec<Head>, Error> {
     use schema::heads::dsl::*;

@@ -85,12 +85,24 @@ pub fn get_table(
 }
 
 pub fn check_auth(table_user: &str, header: &HeaderMap, users: &HashMap<String, Value>) -> bool {
-    let token = match header.get("token") {
+    let token = match header.get("Authorization") {
         Some(t) => t.to_str().unwrap(),
         None => return false
     };
 
-    let user: JsonUser = match users.get(token) {
+    let split: Vec<&str> = token.split_whitespace().collect();
+
+    println!("{:?}", split);
+
+    // if split.len() <= 2 || split[0] != "Bearer" {
+    //     return false;
+    // }
+
+    let tkn = &split[1].to_owned();
+
+    println!("{}", &tkn);
+
+    let user: JsonUser = match users.get(tkn) {
         Some(t) => serde_json::from_str(&t.to_string()).unwrap(),
         None => return false
     };
