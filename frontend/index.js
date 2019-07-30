@@ -14,6 +14,13 @@ var updateInterval = 2000;
  * @param cityIOtableURL cityIO API endpoint URL
  */
 async function getCityIO(url, myHeaders) {
+  var myHeaders = {
+    headers: new Headers({
+      Authorization:
+        "Bearer 86c1e6d8f574a51896bf02e8622b858d573b8afd4e583d3b9258cfe8ed336ee7"
+    })
+  };
+
   return fetch(url, myHeaders)
     .then(function(response) {
       return response.json();
@@ -26,26 +33,25 @@ async function getCityIO(url, myHeaders) {
     });
 }
 
+////////////////////////////////////////////////////////////////////////////////////
 function clearNames(url) {
   return url.toString().replace("https://cityio.media.mit.edu/api/table/", "");
 }
 ////////////////////////////////////////////////////////////////////////////////////
 
 async function getTables() {
+  let counter = 0;
   let tableArray = [];
   let cityIOurl = "https://cityio.media.mit.edu/api/tables/list";
 
   const tables = await getCityIO(cityIOurl);
-  console.log(tables);
 
   for (let i = 0; i < tables.length; i++) {
     let thisTable = await getCityIO(tables[i]);
+
     // make sure we can actually GET the table now
     if (thisTable) {
-      console.log(thisTable);
-
       let thisTableName = clearNames(tables[i]);
-
       infoDiv(
         i +
           " of " +
@@ -55,13 +61,15 @@ async function getTables() {
       );
 
       let thisTableHeader = thisTable.header;
-      let randPos = Math.random() * 10;
-      let tableSpatial = thisTableHeader
-        ? thisTableHeader.spatial
-        : {
-            latitude: 0,
-            longitude: randPos
-          };
+      let tableSpatial;
+      if (thisTableHeader && thisTableHeader.spatial) {
+        tableSpatial = thisTableHeader.spatial;
+      } else {
+        counter = counter + 1;
+
+        tableSpatial = { latitude: counter, longitude: counter };
+      }
+
       tableArray.push({
         url: tables[i],
         name: thisTableName,
@@ -71,11 +79,34 @@ async function getTables() {
     }
   }
 
-  makeMap(tableArray);
+  makeMap(tableArray, counter);
 }
 ////////////////////////////////////////////////////////////////////////////////////
 
-function makeMap(tablesArray) {
+function getDistance(destination) {
+  // return distance in meters
+  var lon1 = toRadian(0),
+    lat1 = toRadian(0),
+    lon2 = toRadian(destination[1]),
+    lat2 = toRadian(destination[0]);
+
+  var deltaLat = lat2 - lat1;
+  var deltaLon = lon2 - lon1;
+
+  var a =
+    Math.pow(Math.sin(deltaLat / 2), 2) +
+    Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin(deltaLon / 2), 2);
+  var c = 2 * Math.asin(Math.sqrt(a));
+  var EARTH_RADIUS = 6371;
+  return c * EARTH_RADIUS * 1000;
+}
+function toRadian(degree) {
+  return (degree * Math.PI) / 180;
+}
+
+////////////////////////////////////////////////////////////////////////////////////
+
+function makeMap(tablesArray, counter) {
   var map = L.map("map").setView([51.505, -0.09], 1);
   // setup the map API
   L.tileLayer(
@@ -94,6 +125,12 @@ function makeMap(tablesArray) {
   //lock map to relevant area view
   map.setMaxBounds(map.getBounds());
 
+  let circle = L.circle([0, 0], getDistance([counter, counter]), {
+    color: "#ed5066",
+    fill: false,
+    opacity: 0.5
+  }).addTo(map);
+
   ///////////////Map icons///////////////////////
   // create a costum map icon [cityIO or non]
   var iconSize = 40;
@@ -104,7 +141,7 @@ function makeMap(tablesArray) {
     popupAnchor: [0, 0],
     shadowUrl: shadow.default,
     shadowSize: [iconSize, iconSize],
-    shadowAnchor: [0, -30]
+    shadowAnchor: [0, -20]
   });
 
   for (var i = 0; i < tablesArray.length; i++) {
@@ -226,9 +263,4 @@ function infoDiv(text) {
 //////////////////////////////////////////
 getTables();
 
-const myHeaders = new Headers({
-  Authorization:
-    "token: 86c1e6d8f574a51896bf02e8622b858d573b8afd4e583d3b9258cfe8ed336ee7"
-});
-
-getCityIO("https://cityio.media.mit.edu/api/table/hidden_table", myHeaders);
+// getCityIO("https://cityio.media.mit.edu/api/table/hidden_table", myHeaders);
