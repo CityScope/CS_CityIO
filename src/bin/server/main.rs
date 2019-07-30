@@ -23,7 +23,7 @@ use serde_json::json;
 use cs_cityio_backend::{connect, read_users, read_latest_tables};
 use cs_cityio_backend::models::{User, Table};
 
-type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
+pub type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
 fn main() -> std::io::Result<()> {
     if cfg!(debug_assertions) {
@@ -127,10 +127,8 @@ fn main() -> std::io::Result<()> {
                 web::resource("/api/table/{name}/{tail:.*}")
                     .route(web::get().to_async(deep_get)),
             )
-
             .service(
                 web::resource("/users/authenticate")
-                    .route(web::get().to_async(list_tables))
                     .route(web::post().to_async(auth))
             )
             .service(index)

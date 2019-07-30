@@ -1,3 +1,4 @@
+use crate::Pool;
 use crate::model::{JSONObject, JSONState, Meta, JsonUser};
 use actix_web::http::{header, StatusCode, header::HeaderMap};
 use actix_web::{get, web, Error, HttpRequest, HttpResponse, Result as ActixResult};
@@ -7,6 +8,7 @@ use futures::{Future, Stream};
 use log::{debug, warn};
 use serde_json::{from_str, json, Map, Value};
 use std::str;
+use cs_cityio_backend::{auth_user};
 use std::collections::HashMap;
 use std::sync::mpsc;
 use std::thread;
@@ -37,7 +39,6 @@ pub fn list_tables(state: web::Data<JSONState>) -> impl Future<Item = HttpRespon
         url.set_path(&format!("api/table/{}", &key.to_string()));
         names.push(url.as_str().to_string());
     }
-
     fut_ok(HttpResponse::Ok().json(&names))
 }
 
@@ -379,24 +380,41 @@ impl User {
     }
 }
 
-pub fn auth(req: HttpRequest) -> impl Future<Item = HttpResponse, Error = Error> {
+pub fn auth(
+    req: HttpRequest,
+    state: web::Data<JSONState>,
+    pool: web::Data<Pool>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
     let headers = req.headers();
 
-    let user = match headers.get("Authorization") {
+    let map = state.lock().unwrap();
+    let con = &pool.get().unwrap();
+
+    let users = map.get("users");
+
+    let tkn: String = match headers.get("Authorization") {
         Some(h) => {
             let auth_header = format!("{:?}", &h).replace("\"", "");
             let split: Vec<&str> = auth_header.split(" ").collect();
-            let user_str = String::from_utf8(decode(&split[1]).unwrap()).unwrap();
-            User::new(&user_str)
+            // let user_str = String::from_utf8(decode(&split[1]).unwrap()).unwrap();
+            // User::new(&user_str)
+            match auth_user(con, &split[1]){
+                Some(usr) => usr.hash,
+                None => return fut_ok(
+                        HttpResponse::build(StatusCode::UNAUTHORIZED).finish()
+                    )
+            }
+
         }
         None => {
             return fut_ok(
                 HttpResponse::Ok()
-                    .json(json!({"status": "'authenticate' field not found in header"})),
+                    .json(json!({"status": "'Authorization' field not found in header"})),
             )
         }
     };
-    fut_ok(HttpResponse::Ok().json(json!({"token": &user.username})))
+
+    fut_ok(HttpResponse::Ok().json(json!({"token": tkn})))
 }
 
 ////////////////////////
