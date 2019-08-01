@@ -6,6 +6,7 @@ use base64::decode;
 use futures::future::ok as fut_ok;
 use futures::{Future, Stream};
 use log::{debug, warn};
+use serde::Deserialize;
 use serde_json::{from_str, json, Map, Value};
 use std::str;
 use cs_cityio_backend::{auth_user};
@@ -369,6 +370,7 @@ pub fn clear_table(
 // auth
 ////////////////////////
 
+#[derive(Deserialize)]
 struct User {
     username: String,
     password: String,
@@ -383,62 +385,62 @@ impl User {
             password: sp[1].to_owned(),
         }
     }
+
+    pub fn decode_base64(&self) -> Result<(String, String), &'static str> {
+        let d_name: String = match decode(&self.username) {
+            Ok(d) => String::from_utf8(d).unwrap(),
+            Err(_) => return Err("could not decode name"),
+        };
+
+        let d_pass: String = match decode(&self.password) {
+            Ok(d) => String::from_utf8(d).unwrap(),
+            Err(_) => return Err("could not decode password"),
+        };
+
+        Ok((d_name, d_pass))
+    }
 }
 
 pub fn auth(
-    req: HttpRequest,
     state: web::Data<JSONState>,
     pool: web::Data<Pool>,
-) -> impl Future<Item = HttpResponse, Error = Error> {
-    let headers = req.headers();
+    pl: web::Payload,
+) -> impl Future<Item = HttpResponse, Error = Error>{
+    pl.concat2().from_err().and_then(move |body| {
+        let con = &pool.get().unwrap();
 
-    let map = state.lock().unwrap();
-    let con = &pool.get().unwrap();
+        let credential: User = match serde_json::from_slice(&body){
+            Ok(c) => c,
+            Err(e) => return fut_ok(un_authed("could not parse payload to json")),
+        };
 
-    let users = map.get("users");
+        //TODO: each value wil be base64 encoded
+        // let (u, p) = match credential.decode_base64() {
+        //     Ok(r) => r,
+        //     Err(e) => return fut_ok(un_authed(e)),
+        // };
 
-    let user: Value = match headers.get("Authorization") {
-        Some(h) => {
-            let auth_header = format!("{:?}", &h).replace("\"", "");
-            let split: Vec<&str> = auth_header.split(" ").collect();
-            // let user_str = String::from_utf8(decode(&split[1]).unwrap()).unwrap();
-            // User::new(&user_str)
-            //
-
-            let usr = match split.get(1) {
-                Some(&s) => s.to_owned(),
-                None => return fut_ok(HttpResponse::build(StatusCode::UNAUTHORIZED).json(
-                    json!("Error parsing Authorization header, format should be 'Authorization: Basic {token}'")
-                ))
-            };
-
-            match auth_user(con, &usr){
-                Some(usr) => json!({
-                    "user": usr.username,
-                    "id": usr. id,
-                    "token": usr.hash,
-                    "is_super": usr.is_super
-                }),
-                None => return fut_ok(
-                        HttpResponse::build(StatusCode::UNAUTHORIZED).finish()
-                    )
-            }
-
+        // match auth_user(con, &u, &p) {
+        match auth_user(con, &credential.username, &credential.password) {
+            Some(u) => {
+                let usr = json!({"user": u.username, "id": u.id, "token": u.hash, "is_super": u.is_super});
+                return fut_ok(HttpResponse::Ok().json(usr))
+            },
+            None => return fut_ok(un_authed("user not found")),
         }
-        None => {
-            return fut_ok(
-                HttpResponse::Ok()
-                    .json(json!({"status": "'Authorization' field not found in header"})),
-            )
-        }
-    };
-
-    fut_ok(HttpResponse::Ok().json(user))
+    })
 }
 
 ////////////////////////
 // helpers
 ////////////////////////
+
+fn un_authed(mes: &str) -> HttpResponse {
+    HttpResponse::build(StatusCode::UNAUTHORIZED).json(
+        json!(&mes)
+    )
+}
+
 fn not_acceptable(mes: &str) -> HttpResponse {
     HttpResponse::NotAcceptable().json(&json!({
         "status": "error",

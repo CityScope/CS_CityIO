@@ -15,7 +15,7 @@ use std::str;
 
 use sha256::sha256::{format_hash, hash};
 use crate::models::{Head, NewHead, NewTable, NewUser, Table, User};
-use base64::decode;
+use base64::{decode, encode};
 
 pub fn connect() -> PgConnection {
     dotenv().ok();
@@ -199,24 +199,10 @@ pub fn delete_users<'a>(con: &PgConnection, name:&'a str) {
     }
 }
 
-pub fn auth_user<'a>(con: &PgConnection, base64:&'a str) -> Option<User> {
+pub fn auth_user<'a>(con: &PgConnection, name: &'a str, pw: &'a str) -> Option<User> {
     use schema::users::dsl::{users, username};
-    let b = match decode(base64) {
-        Ok(b) => b,
-        Err(e) => {
-            println!("Error Decoding Base64 String");
-            return None
-        }
-    };
 
-    let name_pass: Vec<&str> = str::from_utf8(&b)
-        .expect("Error converting to utf")
-        .split(":")
-        .collect();
-
-    println!("{:?}", name_pass);
-
-    let usrs = match users.filter(username.eq(&name_pass[0])).load::<User>(con){
+    let usrs = match users.filter(username.eq(name)).load::<User>(con){
         Ok(u) => u,
         Err(e) => {
             println!("Error getting users");
@@ -224,8 +210,11 @@ pub fn auth_user<'a>(con: &PgConnection, base64:&'a str) -> Option<User> {
         }
     };
 
+    let base64 = encode(&format!("{}:{}", name, pw));
+    println!("{}", &base64);
+
     for u in usrs {
-        let base = format!("{} {:?}", base64.to_owned(), u.ts);
+        let base = format!("{} {:?}", base64, u.ts);
         let base_hashed = format_hash(&hash(&base));
         if base_hashed == u.hash {
             return Some(u);

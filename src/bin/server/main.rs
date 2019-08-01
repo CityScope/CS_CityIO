@@ -68,6 +68,7 @@ fn main() -> std::io::Result<()> {
     };
 
     let mut n = HashMap::new();
+
     for u in users {
         let ju = JsonUser{
             name: u.username,
