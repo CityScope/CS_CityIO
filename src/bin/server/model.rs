@@ -1,8 +1,8 @@
-use std::time::{SystemTime, UNIX_EPOCH};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use std::time::{SystemTime, UNIX_EPOCH};
 
-use serde_derive::{Serialize, Deserialize};
+use serde_derive::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use sha256::sha256::{format_hash, hash};
@@ -18,7 +18,7 @@ pub struct Meta {
     id: String,
     timestamp: u64,
     apiv: String,
-    pub hashes: HashMap<String, String>
+    pub hashes: HashMap<String, String>,
 }
 
 impl Meta {
@@ -31,15 +31,14 @@ impl Meta {
         let apiv = String::from("2.0");
 
         Meta {
-            id: id,
+            id,
             timestamp: now,
-            apiv: apiv,
-            hashes: HashMap::<String, String>::new()
+            apiv,
+            hashes: HashMap::<String, String>::new(),
         }
     }
 
     pub fn from_map(map: &JSONObject) -> Meta {
-
         let mut hmap = HashMap::<String, String>::new();
         for key in map.keys() {
             if key == "meta" {
@@ -56,11 +55,11 @@ impl Meta {
 
         let apiv = String::from("2.1");
 
-        let mut m = Meta{
+        let mut m = Meta {
             id: "id".to_owned(),
             timestamp: now,
-            apiv: apiv,
-            hashes: hmap
+            apiv,
+            hashes: hmap,
         };
 
         m.update_id();

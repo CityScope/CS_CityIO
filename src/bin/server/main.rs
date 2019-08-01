@@ -5,13 +5,13 @@ use std::collections::HashMap;
 use std::env;
 use std::sync::{Arc, Mutex};
 
-use actix_web::http::{header};
-use actix_web::middleware::{Logger, NormalizePath};
 use actix_cors::Cors;
+use actix_web::http::header;
+use actix_web::middleware::{Logger, NormalizePath};
 use actix_web::{web, App, HttpServer};
 use log::info;
 
-use handlers::{auth, clear_table, get_table, deep_get, index, list_tables, set_module, set_table};
+use handlers::{auth, clear_table, deep_get, get_table, index, list_tables, set_module, set_table};
 use model::{JSONState, JsonUser};
 
 use diesel::prelude::*;
@@ -20,8 +20,8 @@ use dotenv;
 
 use serde_json::json;
 
-use cs_cityio_backend::{connect, read_users, read_latest_tables};
-use cs_cityio_backend::models::{User, Table};
+use cs_cityio_backend::models::{Table, User};
+use cs_cityio_backend::{connect, read_latest_tables, read_users};
 
 pub type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
@@ -53,7 +53,7 @@ fn main() -> std::io::Result<()> {
     let con = connect();
     let tables: Vec<Table> = match read_latest_tables(&con) {
         Some(t) => t,
-        None => Vec::new()
+        None => Vec::new(),
     };
 
     let mut m = HashMap::new();
@@ -64,13 +64,13 @@ fn main() -> std::io::Result<()> {
 
     let users: Vec<User> = match read_users(&con) {
         Ok(us) => us,
-        Err(_e) => Vec::new()
+        Err(_e) => Vec::new(),
     };
 
     let mut n = HashMap::new();
 
     for u in users {
-        let ju = JsonUser{
+        let ju = JsonUser {
             name: u.username,
             hash: u.hash.to_owned(),
             is_super: u.is_super,
@@ -111,10 +111,12 @@ fn main() -> std::io::Result<()> {
                 web::resource("/api/table/update/{name}/").route(web::post().to_async(set_table)),
             )
             .service(
-                web::resource("/api/table/update/{name}/{module}").route(web::post().to_async(set_module)),
+                web::resource("/api/table/update/{name}/{module}")
+                    .route(web::post().to_async(set_module)),
             )
             .service(
-                web::resource("/api/table/update/{name}/{module}/").route(web::post().to_async(set_module)),
+                web::resource("/api/table/update/{name}/{module}/")
+                    .route(web::post().to_async(set_module)),
             )
             .service(
                 web::resource("/api/table/clear/{name}").route(web::get().to_async(clear_table)),
@@ -125,15 +127,11 @@ fn main() -> std::io::Result<()> {
             .service(web::resource("/api/tables/list/").route(web::get().to_async(list_tables)))
             .service(web::resource("/api/tables/list").route(web::get().to_async(list_tables)))
             .service(
-                web::resource("/api/table/{name}/{tail:.*}")
-                    .route(web::get().to_async(deep_get)),
+                web::resource("/api/table/{name}/{tail:.*}").route(web::get().to_async(deep_get)),
             )
-            .service(
-                web::resource("/users/authenticate")
-                    .route(web::post().to_async(auth))
-            )
+            .service(web::resource("/users/authenticate").route(web::post().to_async(auth)))
             .service(index)
-                // fs::Files::new("/", "./static").index_file("index.html"),
+        // fs::Files::new("/", "./static").index_file("index.html"),
     })
     .bind(format!("127.0.0.1:{}", &port))?
     .run()

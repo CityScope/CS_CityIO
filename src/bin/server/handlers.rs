@@ -1,16 +1,15 @@
+use crate::model::{JSONObject, JSONState, JsonUser, Meta};
 use crate::Pool;
-use crate::model::{JSONObject, JSONState, Meta, JsonUser};
-use actix_web::http::{header, StatusCode, header::HeaderMap};
+use actix_web::http::{header, header::HeaderMap, StatusCode};
 use actix_web::{get, web, Error, HttpRequest, HttpResponse, Result as ActixResult};
-use base64::decode;
+use cs_cityio_backend::auth_user;
 use futures::future::ok as fut_ok;
 use futures::{Future, Stream};
 use log::{debug, warn};
 use serde::Deserialize;
 use serde_json::{from_str, json, Map, Value};
-use std::str;
-use cs_cityio_backend::{auth_user};
 use std::collections::HashMap;
+use std::str;
 use std::sync::mpsc;
 use std::thread;
 use url::Url;
@@ -48,7 +47,7 @@ pub fn get_table(
     state: web::Data<JSONState>,
     req: HttpRequest,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    let name = format!("{}", *name);
+    let name = name.to_owned();
 
     for b in &BLACK_LIST_TABLE {
         if b == &name {
@@ -79,17 +78,17 @@ pub fn get_table(
     let users = map.get("users").unwrap();
     let header = &req.headers();
 
-    if (check_auth(&table_user, &header, users)) {
+    if check_auth(&table_user, &header, users) {
         fut_ok(HttpResponse::Ok().json(&data))
     } else {
-        fut_ok(HttpResponse::build(StatusCode::UNAUTHORIZED).finish())
+        fut_ok(un_authed("access restricted"))
     }
 }
 
 pub fn check_auth(table_user: &str, header: &HeaderMap, users: &HashMap<String, Value>) -> bool {
     let token = match header.get("Authorization") {
         Some(t) => t.to_str().unwrap(),
-        None => return false
+        None => return false,
     };
 
     let split: Vec<&str> = token.split_whitespace().collect();
@@ -102,7 +101,7 @@ pub fn check_auth(table_user: &str, header: &HeaderMap, users: &HashMap<String, 
 
     // let tkn = &split[1].to_owned();
 
-    let tkn = match &split.get(1){
+    let tkn = match &split.get(1) {
         Some(&t) => t,
         None => return false,
     };
@@ -111,9 +110,10 @@ pub fn check_auth(table_user: &str, header: &HeaderMap, users: &HashMap<String, 
 
     let user: JsonUser = match users.get(tkn) {
         Some(t) => serde_json::from_str(&t.to_string()).unwrap(),
-        None => return false
+        None => return false,
     };
-    &user.name == table_user || user.is_super
+
+    user.name == table_user || user.is_super
 }
 
 pub fn deep_get(
@@ -143,14 +143,13 @@ pub fn deep_get(
         }
     };
 
-    match &table_data.get("header").and_then(|h|{h.get("user")}) {
+    match &table_data.get("header").and_then(|h| h.get("user")) {
         None => (), // public
         Some(u) => {
             let users = map.get("users").unwrap();
             let header = &req.headers();
-            match check_auth(u.as_str().unwrap(), &header, users) {
-                true => (),
-                false => return fut_ok(HttpResponse::build(StatusCode::UNAUTHORIZED).finish())
+            if !check_auth(u.as_str().unwrap(), &header, users) {
+                return fut_ok(un_authed("access restricted"));
             }
         }
     }
@@ -160,11 +159,11 @@ pub fn deep_get(
         return fut_ok(HttpResponse::Ok().json(&table_data));
     }
 
-    if field.chars().last().unwrap() == '/' {
+    if field.ends_with('/') {
         field.pop();
     }
 
-    let fields = field.split("/");
+    let fields = field.split('/');
     let mut data: &Value = table_data;
 
     for f in fields {
@@ -188,7 +187,7 @@ pub fn set_table(
     pl.concat2().from_err().and_then(move |body| {
         // body is loaded, now we can deserialize json-rust
 
-        let name = format!("{}", *name);
+        let name = name.to_owned();
 
         let tmp_state = state.to_owned();
         let map = tmp_state.lock().unwrap();
@@ -217,9 +216,8 @@ pub fn set_table(
                 let table_user = u.as_str().unwrap();
                 let users = map.get("users").unwrap();
                 let headers = &req.headers();
-                match check_auth(table_user, headers, users) {
-                    true => (),
-                    false => return Ok(HttpResponse::build(StatusCode::UNAUTHORIZED).finish())
+                if !check_auth(table_user, headers, users) {
+                    return Ok(un_authed("access restricted"));
                 }
             }
         }
@@ -309,9 +307,8 @@ pub fn set_module(
             Some(u) => {
                 let table_user = u.as_str().unwrap();
                 let headers = &req.headers();
-                match check_auth(table_user, headers, &users) {
-                    true => (),
-                    false => return Ok(HttpResponse::build(StatusCode::UNAUTHORIZED).finish())
+                if !check_auth(table_user, headers, &users) {
+                    return Ok(un_authed("access restricted"));
                 }
             }
         }
@@ -343,7 +340,7 @@ pub fn clear_table(
     state: web::Data<JSONState>,
     req: HttpRequest,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    let name = format!("{}", *name);
+    let name = name.to_owned();
     let mut map = state.lock().unwrap();
     let user_map = map.to_owned();
     let users = user_map.get("users").unwrap();
@@ -351,13 +348,12 @@ pub fn clear_table(
 
     let table_data = &tables.get(&name).unwrap();
 
-    match &table_data.get("header").and_then(|h|{h.get("user")}) {
+    match &table_data.get("header").and_then(|h| h.get("user")) {
         None => (), // public
         Some(u) => {
             let header = &req.headers();
-            match check_auth(u.as_str().unwrap(), &header, users) {
-                true => (),
-                false => return fut_ok(HttpResponse::build(StatusCode::UNAUTHORIZED).finish())
+            if !check_auth(u.as_str().unwrap(), &header, users) {
+                return fut_ok(un_authed("access restricted"));
             }
         }
     }
@@ -376,42 +372,32 @@ struct User {
     password: String,
 }
 
-impl User {
-    pub fn new(combined: &str) -> User {
-        let sp: Vec<&str> = combined.split(":").collect();
+// impl User {
+// pub fn decode_base64(&self) -> Result<(String, String), &'static str> {
+//     let d_name: String = match decode(&self.username) {
+//         Ok(d) => String::from_utf8(d).unwrap(),
+//         Err(_) => return Err("could not decode name"),
+//     };
 
-        User {
-            username: sp[0].to_owned(),
-            password: sp[1].to_owned(),
-        }
-    }
+//     let d_pass: String = match decode(&self.password) {
+//         Ok(d) => String::from_utf8(d).unwrap(),
+//         Err(_) => return Err("could not decode password"),
+//     };
 
-    pub fn decode_base64(&self) -> Result<(String, String), &'static str> {
-        let d_name: String = match decode(&self.username) {
-            Ok(d) => String::from_utf8(d).unwrap(),
-            Err(_) => return Err("could not decode name"),
-        };
-
-        let d_pass: String = match decode(&self.password) {
-            Ok(d) => String::from_utf8(d).unwrap(),
-            Err(_) => return Err("could not decode password"),
-        };
-
-        Ok((d_name, d_pass))
-    }
-}
+//     Ok((d_name, d_pass))
+// }
+// }
 
 pub fn auth(
-    state: web::Data<JSONState>,
     pool: web::Data<Pool>,
     pl: web::Payload,
-) -> impl Future<Item = HttpResponse, Error = Error>{
+) -> impl Future<Item = HttpResponse, Error = Error> {
     pl.concat2().from_err().and_then(move |body| {
         let con = &pool.get().unwrap();
 
         let credential: User = match serde_json::from_slice(&body){
             Ok(c) => c,
-            Err(e) => return fut_ok(un_authed("could not parse payload to json")),
+            Err(_) => return fut_ok(un_authed("could not parse payload to json")),
         };
 
         //TODO: each value wil be base64 encoded
@@ -424,9 +410,9 @@ pub fn auth(
         match auth_user(con, &credential.username, &credential.password) {
             Some(u) => {
                 let usr = json!({"user": u.username, "id": u.id, "token": u.hash, "is_super": u.is_super});
-                return fut_ok(HttpResponse::Ok().json(usr))
+                fut_ok(HttpResponse::Ok().json(usr))
             },
-            None => return fut_ok(un_authed("user not found")),
+            None => fut_ok(un_authed("user not found")),
         }
     })
 }
@@ -436,9 +422,7 @@ pub fn auth(
 ////////////////////////
 
 fn un_authed(mes: &str) -> HttpResponse {
-    HttpResponse::build(StatusCode::UNAUTHORIZED).json(
-        json!(&mes)
-    )
+    HttpResponse::build(StatusCode::UNAUTHORIZED).json(json!(&mes))
 }
 
 fn not_acceptable(mes: &str) -> HttpResponse {

@@ -7,22 +7,23 @@ pub mod schema;
 use chrono::prelude::*;
 use diesel::dsl::{exists, select};
 use diesel::prelude::*;
-use diesel::{PgConnection, result::Error, result::DatabaseErrorKind};
+use diesel::{result::Error, PgConnection};
 use dotenv::dotenv;
 use serde_json::Value;
 use std::env;
 use std::str;
 
-use sha256::sha256::{format_hash, hash};
 use crate::models::{Head, NewHead, NewTable, NewUser, Table, User};
 use base64::{decode, encode};
+use sha256::sha256::{format_hash, hash};
 
 pub fn connect() -> PgConnection {
     dotenv().ok();
 
     let database_url = env::var("DATABASE_URL").expect("env var DATABASE_URL must be set");
 
-    PgConnection::establish(&database_url).expect(&format!("Error connecting to {}", database_url))
+    PgConnection::establish(&database_url)
+        .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
 }
 
 pub fn create_table<'a>(
@@ -35,8 +36,8 @@ pub fn create_table<'a>(
 
     let new_table = NewTable {
         hash: hash_value,
-        table_name: table_name,
-        data: data,
+        table_name,
+        data,
     };
 
     diesel::insert_into(tables::table)
@@ -50,26 +51,19 @@ pub fn send_table<'a>(
     table_name: &'a str,
     data: &'a Value,
 ) -> Result<(), Error> {
-
     let table = match update_table(&con, &hash_value, &data) {
         Ok(t) => t,
-        Err(e) => {
-            match create_table(&con, &hash_value, &table_name, &data) {
-                Ok(t) => t,
-                Err(e) => return Err(e),
-            }
+        Err(_) => match create_table(&con, &hash_value, &table_name, &data) {
+            Ok(t) => t,
+            Err(e) => return Err(e),
         },
     };
 
     println!("sent table: {}", &table.table_name);
 
-    let head = match update_head(&con, &table.table_name, &table.hash) {
-        Ok(h) => h,
-        Err(e) => {
-            match create_head(&con, &table.table_name, &table.hash) {
-                Ok(h) => h,
-                Err(e) => return Err(e)
-            }
+    if update_head(&con, &table.table_name, &table.hash).is_err() {
+        if let Err(e) = create_head(&con, &table.table_name, &table.hash) {
+            return Err(e)
         }
     };
 
@@ -83,21 +77,20 @@ pub fn read_users(con: &PgConnection) -> Result<Vec<User>, Error> {
     users.load::<User>(con)
 }
 
-pub fn update_table<'a> (
-     con: &PgConnection,
+pub fn update_table<'a>(
+    con: &PgConnection,
     hash_value: &'a str,
     new_data: &'a Value,
-) -> Result<Table, Error>{
-// ){
+) -> Result<Table, Error> {
+    // ){
     use schema::tables::dsl::*;
     diesel::update(tables.find(&hash_value))
         .set(data.eq(&new_data))
         .get_result::<Table>(con)
 }
 
-
-pub fn delete_table<'a>(con: &PgConnection, hash_value: &'a str){
-    use schema::tables::dsl::{tables};
+pub fn delete_table<'a>(con: &PgConnection, hash_value: &'a str) {
+    use schema::tables::dsl::tables;
 
     let result = diesel::delete(tables.find(&hash_value))
         .execute(con)
@@ -114,11 +107,14 @@ pub fn check_head<'a>(con: &PgConnection, name: &'a str) -> bool {
         .expect("Error checking existance")
 }
 
-pub fn create_head<'a>(con: &PgConnection, name: &'a str, hash_value: &'a str)
--> Result<Head, Error> {
+pub fn create_head<'a>(
+    con: &PgConnection,
+    name: &'a str,
+    hash_value: &'a str,
+) -> Result<Head, Error> {
     use schema::heads;
 
-    let new_head = NewHead{
+    let new_head = NewHead {
         table_name: name,
         table_hash: hash_value,
     };
@@ -128,7 +124,11 @@ pub fn create_head<'a>(con: &PgConnection, name: &'a str, hash_value: &'a str)
         .get_result(con)
 }
 
-pub fn update_head<'a>(con: &PgConnection, name: &'a str, hash_value: &'a str) -> Result<Head, Error> {
+pub fn update_head<'a>(
+    con: &PgConnection,
+    name: &'a str,
+    hash_value: &'a str,
+) -> Result<Head, Error> {
     use schema::heads::dsl::{heads, table_hash};
 
     diesel::update(heads.find(&name))
@@ -137,7 +137,7 @@ pub fn update_head<'a>(con: &PgConnection, name: &'a str, hash_value: &'a str) -
 }
 
 pub fn delete_head<'a>(con: &PgConnection, name: &'a str) {
-    use schema::heads::dsl::{heads};
+    use schema::heads::dsl::heads;
 
     let result = diesel::delete(heads.find(&name))
         .execute(con)
@@ -157,7 +157,7 @@ pub fn create_user<'a>(con: &PgConnection, base64: &'a str, is_super: bool) -> U
     let comb = str::from_utf8(&b)
         .expect("Error converting to UTF-8")
         .to_string(); // "username:password"
-    let name_pass: Vec<&str> = comb.split(":").collect();
+    let name_pass: Vec<&str> = comb.split(':').collect();
     let username = &name_pass[0];
 
     let new_base = format!("{} {:?}", &base, &now);
@@ -170,7 +170,7 @@ pub fn create_user<'a>(con: &PgConnection, base64: &'a str, is_super: bool) -> U
         username: &username,
         ts: &now,
         hash: &hash,
-        is_super: is_super,
+        is_super,
     };
 
     diesel::insert_into(users::table)
@@ -189,8 +189,8 @@ pub fn delete_user(con: &PgConnection, id: i32) {
     println!("Deleted {:?}", result);
 }
 
-pub fn delete_users<'a>(con: &PgConnection, name:&'a str) {
-    use schema::users::dsl::{users, id, username};
+pub fn delete_users<'a>(con: &PgConnection, name: &'a str) {
+    use schema::users::dsl::{username, users};
 
     let us = users.filter(username.eq(name)).load::<User>(con).unwrap();
 
@@ -200,13 +200,13 @@ pub fn delete_users<'a>(con: &PgConnection, name:&'a str) {
 }
 
 pub fn auth_user<'a>(con: &PgConnection, name: &'a str, pw: &'a str) -> Option<User> {
-    use schema::users::dsl::{users, username};
+    use schema::users::dsl::{username, users};
 
-    let usrs = match users.filter(username.eq(name)).load::<User>(con){
+    let usrs = match users.filter(username.eq(name)).load::<User>(con) {
         Ok(u) => u,
-        Err(e) => {
+        Err(_) => {
             println!("Error getting users");
-            return None
+            return None;
         }
     };
 
@@ -231,30 +231,29 @@ pub fn read_heads(con: &PgConnection) -> Result<Vec<Head>, Error> {
 
 pub fn read_table_hash(con: &PgConnection, hash_value: &str) -> Result<Table, Error> {
     use schema::tables::dsl::*;
-    tables.find(hash_value)
-        .get_result(con)
+    tables.find(hash_value).get_result(con)
 }
 
-pub fn read_latest_tables(con: &PgConnection) -> Option<Vec<Table>>{
+pub fn read_latest_tables(con: &PgConnection) -> Option<Vec<Table>> {
     let heads = match read_heads(con) {
         Ok(hs) => hs,
-        Err(e) => {
+        Err(_) => {
             println!("Error, reading heads");
-            return None
+            return None;
         }
     };
     let mut tables: Vec<Table> = Vec::new();
     for h in heads {
         let table = match read_table_hash(con, &h.table_hash) {
             Ok(t) => t,
-            Err(e) => continue
+            Err(_) => continue,
         };
         tables.push(table);
     }
 
-    if tables.len() != 0 {
-        Some(tables)
+    if tables.is_empty()  {
+        None
     } else {
-        None // :(
+        Some(tables)
     }
 }

@@ -1,7 +1,7 @@
-use serde_json::Value as JSONValue;
 use crate::schema::{heads, tables, users};
-use chrono::DateTime;
 use chrono::offset::Utc;
+use chrono::DateTime;
+use serde_json::Value as JSONValue;
 
 #[derive(Queryable, Debug)]
 pub struct Table {
@@ -12,7 +12,7 @@ pub struct Table {
 }
 
 #[derive(Insertable)]
-#[table_name="tables"]
+#[table_name = "tables"]
 pub struct NewTable<'a> {
     pub hash: &'a str,
     pub table_name: &'a str,
@@ -26,7 +26,7 @@ pub struct Head {
 }
 
 #[derive(Insertable)]
-#[table_name="heads"]
+#[table_name = "heads"]
 pub struct NewHead<'a> {
     pub table_name: &'a str,
     pub table_hash: &'a str,
@@ -42,7 +42,7 @@ pub struct User {
 }
 
 #[derive(Insertable)]
-#[table_name="users"]
+#[table_name = "users"]
 pub struct NewUser<'a> {
     pub username: &'a str,
     pub hash: &'a str,

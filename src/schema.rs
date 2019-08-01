@@ -26,8 +26,4 @@ table! {
 
 joinable!(heads -> tables (table_hash));
 
-allow_tables_to_appear_in_same_query!(
-    heads,
-    tables,
-    users,
-);
+allow_tables_to_appear_in_same_query!(heads, tables, users,);

@@ -1,13 +1,7 @@
 extern crate cs_cityio_backend;
 extern crate diesel;
-
-use cs_cityio_backend::{connect, create_user, auth_user, delete_users};
-use cs_cityio_backend::models::Table;
-use crate::diesel::prelude::*;
 use base64::encode;
-
-use serde_json::json;
-
+use cs_cityio_backend::{auth_user, connect, create_user, delete_users};
 fn main() {
     let connection = connect();
 
@@ -23,10 +17,9 @@ fn main() {
 
     println!("\n saved user {} with id {}", &user.username, &user.id);
 
-    let authed_user = auth_user(&connection, &base).unwrap();
+    let authed_user = auth_user(&connection, "newuser", "password").unwrap();
 
     assert_eq!(authed_user.id, user.id);
 
     delete_users(&connection, &authed_user.username);
-
 }

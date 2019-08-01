@@ -1,17 +1,17 @@
 extern crate cs_cityio_backend;
 extern crate diesel;
 
-use cs_cityio_backend::{connect, delete_table, delete_head};
-use cs_cityio_backend::models::Head;
 use crate::diesel::prelude::*;
-
+use cs_cityio_backend::models::Head;
+use cs_cityio_backend::{connect, delete_head, delete_table};
 
 fn main() {
     use cs_cityio_backend::schema::heads::dsl::*;
 
     let connection = connect();
 
-    let results = heads.load::<Head>(&connection)
+    let results = heads
+        .load::<Head>(&connection)
         .expect("Error loading tables");
 
     println!("Displaying {} tables", results.len());
