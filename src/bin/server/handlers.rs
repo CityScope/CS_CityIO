@@ -99,9 +99,14 @@ pub fn check_auth(table_user: &str, header: &HeaderMap, users: &HashMap<String, 
     //     return false;
     // }
 
-    let tkn = &split[1].to_owned();
+    // let tkn = &split[1].to_owned();
 
-    println!("{}", &tkn);
+    let tkn = match &split.get(1){
+        Some(&t) => t,
+        None => return false,
+    };
+
+    debug!("{}", &tkn);
 
     let user: JsonUser = match users.get(tkn) {
         Some(t) => serde_json::from_str(&t.to_string()).unwrap(),
@@ -392,14 +397,28 @@ pub fn auth(
 
     let users = map.get("users");
 
-    let tkn: String = match headers.get("Authorization") {
+    let user: Value = match headers.get("Authorization") {
         Some(h) => {
             let auth_header = format!("{:?}", &h).replace("\"", "");
             let split: Vec<&str> = auth_header.split(" ").collect();
             // let user_str = String::from_utf8(decode(&split[1]).unwrap()).unwrap();
             // User::new(&user_str)
-            match auth_user(con, &split[1]){
-                Some(usr) => usr.hash,
+            //
+
+            let usr = match split.get(1) {
+                Some(&s) => s.to_owned(),
+                None => return fut_ok(HttpResponse::build(StatusCode::UNAUTHORIZED).json(
+                    json!("Error parsing Authorization header, format should be 'Authorization: Basic {token}'")
+                ))
+            };
+
+            match auth_user(con, &usr){
+                Some(usr) => json!({
+                    "user": usr.username,
+                    "id": usr. id,
+                    "token": usr.hash,
+                    "is_super": usr.is_super
+                }),
                 None => return fut_ok(
                         HttpResponse::build(StatusCode::UNAUTHORIZED).finish()
                     )
@@ -414,7 +433,7 @@ pub fn auth(
         }
     };
 
-    fut_ok(HttpResponse::Ok().json(json!({"token": tkn})))
+    fut_ok(HttpResponse::Ok().json(user))
 }
 
 ////////////////////////
