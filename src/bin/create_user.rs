@@ -10,7 +10,7 @@ use serde_json::json;
 fn main() {
     let connection = connect();
 
-    // you need to come up with a good &base
+    // need base variable
     let user = create_user(&connection, &base, true);
 
     println!("\n saved user {} with id {}", &user.username, &user.id);
