@@ -37,10 +37,10 @@ def get_ip_address():
     s.connect(("8.8.8.8", 80))
     return str(s.getsockname()[0])
 
-# get this app folder
-
 
 def get_folder_path():
+    # get this app folder
+
     loc = str(os.path.realpath(
         os.path.join(os.getcwd(), os.path.dirname(__file__)))) + '/'
     return loc
@@ -83,7 +83,7 @@ def send_slack_msg(msg):
     # ! replace slack token with the one from
     # ! https://api.slack.com/apps/ALJ2FH9RV/install-on-team?
 
-    token = ''
+    token = '_TOKEN_'
     client = slack.WebClient(token)
     # tst slack api
     client.api_call("auth.test")
@@ -104,38 +104,48 @@ def loop():
         from_last_sent = datetime.now() - last_sent
         # if interval passed
         if from_last_sent > SEND_INTERVAL:
-            req = requests.post(url=API_ENDPOINT, data=demo_grid())
-            # if error in cityIO
-            if req.status_code != 200:
-                cityio_status = 'dead'
-                # mark the first time this error was noted
-                if first_error_time == None:
-                    first_error_time = human_time(time.time())
-                # count the attempts
-                error_attempts_counter = error_attempts_counter + 1
-                # get longer intervals between atempts
-                SEND_INTERVAL = error_attempts_counter * SEND_INTERVAL
-                # notify slack
-                dead_msg = "cityIO might be down. so sad. it's dead since " + \
-                    str(first_error_time) + ' attempt {}, retrying every {} now.'.format(
-                        error_attempts_counter, SEND_INTERVAL)
-                send_slack_msg(dead_msg)
-            else:
-                if cityio_status == 'dead':
-                    ok_msg = 'https://www.youtube.com/watch?v=TB54dZkzZOY|cityIO \
-                    is back to life, back to reality. ' + \
-                        str(human_time(time.time()))
-                    send_slack_msg(ok_msg)
-                    cityio_status = 'ok'
-                # reset the counter from prev. counts
-                error_attempts_counter = 0
-                first_error_time = None
-                SEND_INTERVAL = timedelta(milliseconds=1000)
-            # reset clock
+            try:
+                req = requests.post(url=API_ENDPOINT, data=demo_grid())
+                # if error in cityIO
+                if req.status_code != 200:
+                    cityio_status = 'dead'
+                    # mark the first time this error was noted
+                    if first_error_time == None:
+                        first_error_time = human_time(time.time())
+                    # count the attempts
+                    error_attempts_counter = error_attempts_counter + 1
+                    # get longer intervals between atempts
+                    SEND_INTERVAL = error_attempts_counter * SEND_INTERVAL
+                    # notify slack
+                    dead_msg = "cityIO might be down. so sad. it's dead since " + \
+                        str(first_error_time) + ' attempt {}, retrying every {} now.'.format(
+                            error_attempts_counter, SEND_INTERVAL)
+                    send_slack_msg(dead_msg)
+                else:
+                    if cityio_status == 'dead':
+                        ok_msg = 'https://www.youtube.com/watch?v=TB54dZkzZOY|cityIO \
+                        is back to life, back to reality. ' + \
+                            str(human_time(time.time()))
+                        send_slack_msg(ok_msg)
+                        cityio_status = 'ok'
+                    # reset the counter from prev. counts
+                    error_attempts_counter = 0
+                    first_error_time = None
+                    SEND_INTERVAL = timedelta(milliseconds=1000)
+                # reset clock
+            except req.Timeout as e:
+                timeout_msg = "TIMEOUT {} at {}".format(e, datetime.now())
+                send_slack_msg(timeout_msg)
+
+                pass
+            except req.ConnectionError as e:
+                err_msg = "Error {} at {}".format(e, datetime.now())
+                send_slack_msg(err_msg)
+                pass
             last_sent = datetime.now()
 
 
 if __name__ == '__main__':
-    init_msg = "cityIO Virtual-Table & Observer Starting... SSH using: $ssh pi@" + get_ip_address()
+    init_msg = "VirtualScope Starting... || SSH using: $ssh _USER_@virtualscope.media.mit.edu || Running at: " + get_ip_address()
     send_slack_msg(init_msg)
     loop()
