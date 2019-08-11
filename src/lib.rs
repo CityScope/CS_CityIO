@@ -63,7 +63,7 @@ pub fn send_table<'a>(
 
     if update_head(&con, &table.table_name, &table.hash).is_err() {
         if let Err(e) = create_head(&con, &table.table_name, &table.hash) {
-            return Err(e)
+            return Err(e);
         }
     };
 
@@ -251,7 +251,7 @@ pub fn read_latest_tables(con: &PgConnection) -> Option<Vec<Table>> {
         tables.push(table);
     }
 
-    if tables.is_empty()  {
+    if tables.is_empty() {
         None
     } else {
         Some(tables)

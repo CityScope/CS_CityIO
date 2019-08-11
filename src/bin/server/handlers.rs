@@ -2,6 +2,7 @@ use crate::model::{JSONObject, JSONState, JsonUser, Meta};
 use crate::Pool;
 use actix_web::http::{header, header::HeaderMap, StatusCode};
 use actix_web::{get, web, Error, HttpRequest, HttpResponse, Result as ActixResult};
+use base64::decode;
 use cs_cityio_backend::auth_user;
 use futures::future::ok as fut_ok;
 use futures::{Future, Stream};
@@ -372,21 +373,21 @@ struct User {
     password: String,
 }
 
-// impl User {
-// pub fn decode_base64(&self) -> Result<(String, String), &'static str> {
-//     let d_name: String = match decode(&self.username) {
-//         Ok(d) => String::from_utf8(d).unwrap(),
-//         Err(_) => return Err("could not decode name"),
-//     };
+impl User {
+    pub fn decode_base64(&self) -> Result<(String, String), &'static str> {
+        let d_name: String = match decode(&self.username) {
+            Ok(d) => String::from_utf8(d).unwrap(),
+            Err(_) => return Err("could not decode name"),
+        };
 
-//     let d_pass: String = match decode(&self.password) {
-//         Ok(d) => String::from_utf8(d).unwrap(),
-//         Err(_) => return Err("could not decode password"),
-//     };
+        let d_pass: String = match decode(&self.password) {
+            Ok(d) => String::from_utf8(d).unwrap(),
+            Err(_) => return Err("could not decode password"),
+        };
 
-//     Ok((d_name, d_pass))
-// }
-// }
+        Ok((d_name, d_pass))
+    }
+}
 
 pub fn auth(
     pool: web::Data<Pool>,
@@ -400,14 +401,14 @@ pub fn auth(
             Err(_) => return fut_ok(un_authed("could not parse payload to json")),
         };
 
-        //TODO: each value wil be base64 encoded
-        // let (u, p) = match credential.decode_base64() {
-        //     Ok(r) => r,
-        //     Err(e) => return fut_ok(un_authed(e)),
-        // };
+        // TODO: each value wil be base64 encoded
+        let (u, p) = match credential.decode_base64() {
+            Ok(r) => r,
+            Err(e) => return fut_ok(un_authed(e)),
+        };
 
-        // match auth_user(con, &u, &p) {
-        match auth_user(con, &credential.username, &credential.password) {
+        match auth_user(con, &u, &p) {
+        // match auth_user(con, &credential.username, &credential.password) {
             Some(u) => {
                 let usr = json!({"user": u.username, "id": u.id, "token": u.hash, "is_super": u.is_super});
                 fut_ok(HttpResponse::Ok().json(usr))
