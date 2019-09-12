@@ -13,7 +13,7 @@ var updateInterval = 2000;
  * get cityIO method [uses polyfill]
  * @param cityIOtableURL cityIO API endpoint URL
  */
-async function getCityIO(url, myHeaders) {
+async function getCityIO(url) {
   var myHeaders = {
     headers: new Headers({
       Authorization:
@@ -30,6 +30,29 @@ async function getCityIO(url, myHeaders) {
     })
     .catch(err => {
       console.log(err);
+    });
+}
+//
+
+async function postCityIO(url, data) {
+  var myHeaders = {
+    headers: new Headers({
+      Authorization:
+        "Bearer 86c1e6d8f574a51896bf02e8622b858d573b8afd4e583d3b9258cfe8ed336ee7"
+    }),
+    method: "POST",
+    body: JSON.stringify(data) // body data type must match "Content-Type" header
+  };
+
+  return fetch(url, myHeaders)
+    .then(function(response) {
+      return response.json();
+    })
+
+    .catch(err => {
+      console.log(err);
+
+      return JSON.stringify(err);
     });
 }
 
@@ -178,12 +201,37 @@ function makeMap(tablesArray, counter) {
     let tableMeta = m.properties;
     tableNameDiv.innerHTML = clearNames(m.properties.url);
 
-    var deleteDiv = document.getElementById("deleteDiv");
     //put prj name in div
-    let delLink =
+    let removeTableURL =
       "https://cityio.media.mit.edu/api/table/clear/" + tableMeta.name;
 
-    deleteDiv.innerHTML = "<a href=" + delLink + ">Remove Table</a>";
+    // !
+    let responseDiv = document.getElementById("responseDiv");
+    responseDiv.innerHTML = "server response will appear here..";
+    var postButton = document.getElementById("post");
+    postButton.onclick = async function(event) {
+      event.preventDefault();
+      var fieldName = document.getElementById("fieldName");
+      var JSONdata = document.getElementById("JSONdata");
+      let postURL =
+        "https://cityio.media.mit.edu/api/table/update/" +
+        tableMeta.name +
+        "/" +
+        fieldName.value.toString();
+      let postData = JSONdata.value;
+      let res = await postCityIO(postURL, postData);
+      responseDiv.innerHTML = JSON.stringify(res);
+    };
+
+    var deleteButton = document.getElementById("delete");
+    deleteButton.onclick = async function(event) {
+      event.preventDefault();
+      var fieldName = document.getElementById("fieldName");
+      let delFieldURL = removeTableURL + "/" + fieldName.value.toString();
+      let res = await postCityIO(delFieldURL, null);
+      console.log(res);
+      responseDiv.innerHTML = JSON.stringify(res);
+    };
 
     //stop update on modal close
     $("#modal").on("hide.bs.modal", function() {
@@ -205,6 +253,7 @@ function makeMap(tablesArray, counter) {
 
 async function update(url) {
   const cityIOjson = await getCityIO(url);
+
   // only show table header
   let jsonMerge = {};
   $.extend(jsonMerge, cityIOjson.meta, cityIOjson.header);

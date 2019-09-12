@@ -3,36 +3,36 @@
 @import url("https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css");
 
 #title {
-  top: 15vw;
-  left: 2vw;
+  top: 15em;
+  left: 2em;
   position: fixed;
   z-index: 1000;
 }
 
 #logo {
-  top: 5vw;
-  left: 2vw;
+  top: 5em;
+  left: 2em;
   position: fixed;
   z-index: 1000;
 }
 
 .log {
-  max-height: 10vw;
-  max-width: 20vw;
+  max-height: 10em;
+  max-width: 20em;
   overflow: scroll;
   overflow-x: hidden;
   background-color: rgba(45, 57, 62, 0.466);
   font-family: "Roboto Condensed";
   color: rgb(180, 180, 180);
-  font-size: 1vw;
-  line-height: 1vw;
+  font-size: 1em;
+  line-height: 1em;
   z-index: 999;
-  -webkit-box-shadow: 0vw 0vw 0.5vw 0.5vw rgba(0, 0, 0, 0.5);
-  -moz-box-shadow: 0vw 0vw 0.5vw 0.5vw rgba(0, 0, 0, 0.5);
-  box-shadow: 0vw 0vw 2vw 1vw rgba(0, 0, 0, 0.5);
-  padding: 0.5vw;
+  -webkit-box-shadow: 0em 0em 0.5em 0.5em rgba(0, 0, 0, 0.5);
+  -moz-box-shadow: 0em 0em 0.5em 0.5em rgba(0, 0, 0, 0.5);
+  box-shadow: 0em 0em 2em 1em rgba(0, 0, 0, 0.5);
+  padding: 0.5em;
 
-  margin-bottom: 5vw;
+  margin-bottom: 5em;
 }
 .log a:link {
   color: #ed5066;
@@ -45,17 +45,17 @@
 h1 {
   font-family: "Press Start 2P";
   color: #ed5066;
-  text-shadow: 1vw 1vw 2vw #000000;
-  font-size: 3vw;
-  line-height: 2.5vw;
+  text-shadow: 1em 1em 2em #000000;
+  font-size: 3em;
+  line-height: 2.5em;
   cursor: text;
 }
 
 h2 {
   font-family: "Roboto Condensed";
   color: rgb(134, 147, 151);
-  text-shadow: 1vw 1vw 1vw #000000;
-  font-size: 1.2vw;
+  text-shadow: 1em 1em 1em #000000;
+  font-size: 1.2em;
 }
 
 h2 a:link,
@@ -84,11 +84,11 @@ body {
 
 /* https://gist.github.com/AnnoyingTechnology/191e888988242371699fb7870f0e379e */
 body.modal-open > :not(.modal) {
-  -webkit-filter: blur(1vw);
-  -moz-filter: blur(1vw);
-  -o-filter: blur(1vw);
-  -ms-filter: blur(1vw);
-  filter: blur(1vw);
+  -webkit-filter: blur(1em);
+  -moz-filter: blur(1em);
+  -o-filter: blur(1em);
+  -ms-filter: blur(1em);
+  filter: blur(1em);
 }
 
 .modal-content {
@@ -97,19 +97,73 @@ body.modal-open > :not(.modal) {
 .close {
   text-align: right;
   color: rgb(204, 204, 204);
-  font-size: 5vw;
+  font-size: 5em;
 }
 
 .tableNameDiv {
   font-family: "Press Start 2P";
   color: rgb(218, 218, 218);
-  font-size: 3vw;
+  font-size: 3em;
   z-index: 999;
 }
 
 .deleteDiv {
+  margin: 1em;
   font-family: "Press Start 2P";
-  font-size: 1vw;
+  font-size: 1em;
+}
+.inputDiv {
+  font-family: "Roboto Condensed";
+  font-size: 1em;
+}
+
+input,
+textarea,
+button:focus {
+  outline: 0;
+}
+
+input[type="text"],
+select,
+textarea {
+  border: 1px solid rgb(204, 204, 204);
+  margin-top: 1em;
+  background-color: #0c181b83;
+  font-size: 0.8em;
+  color: rgb(204, 204, 204);
+  border-radius: 0.5em;
+  box-sizing: border-box;
+  resize: both;
+}
+
+textarea {
+  width: 50%;
+}
+
+.responseDiv {
+  width: 50%;
+  margin-top: 1em;
+  color: rgb(204, 204, 204);
+  padding: 1em;
+  border: 1px solid rgb(112, 112, 112);
+  border-radius: 0.5em;
+  font-family: "Press Start 2P";
+  font-size: 0.2em;
+}
+
+button {
+  background-color: #ed5066;
+  color: rgb(0, 0, 0);
+  margin: 1em;
+  border: none;
+  border-radius: 0.5em;
+  cursor: pointer;
+  font-family: "Press Start 2P";
+  font-size: 0.2em;
+}
+
+button:hover {
+  background-color: #ed506577;
 }
 
 .deleteDiv a {
@@ -129,8 +183,8 @@ body.modal-open > :not(.modal) {
 }
 
 ::-webkit-scrollbar {
-  width: 0.5vw;
-  height: 5vw;
+  width: 0.5em;
+  height: 5em;
   background-color: rgb(28, 36, 39);
 }
 
@@ -148,8 +202,8 @@ body.modal-open > :not(.modal) {
   font-family: "Roboto Condensed";
   background: #2d393e;
   color: #ed5066;
-  font-size: 1vw;
-  line-height: 2vw;
+  font-size: 1em;
+  line-height: 2em;
 }
 
 .leaflet-popup-tip {
