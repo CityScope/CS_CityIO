@@ -218,7 +218,7 @@ function makeMap(tablesArray, counter) {
         tableMeta.name +
         "/" +
         fieldName.value.toString();
-      let postData = JSONdata.value;
+      let postData = JSON.parse(JSONdata.value);
       let res = await postCityIO(postURL, postData);
       responseDiv.innerHTML = JSON.stringify(res);
     };
