@@ -219,7 +219,15 @@ function makeMap(tablesArray, counter) {
         "/" +
         fieldName.value.toString();
       let postData = JSONdata.value;
+      postData = postData.split("\r\n");
+
+      for (var i = 0; i < postData.length; i++) {
+        postData[i] = JSON.parse(postData[i]);
+        console.log(postData[i]);
+      }
+
       let res = await postCityIO(postURL, postData);
+
       responseDiv.innerHTML = JSON.stringify(res);
     };
 
