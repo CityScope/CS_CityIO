@@ -225,6 +225,8 @@ function makeMap(tablesArray, counter) {
         postData[i] = JSON.parse(postData[i]);
         console.log(postData[i]);
       }
+      postData = postData[0];
+      console.log(postData);
 
       let res = await postCityIO(postURL, postData);
 
