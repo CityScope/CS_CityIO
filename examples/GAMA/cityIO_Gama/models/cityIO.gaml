@@ -13,7 +13,7 @@ global {
 	//geometry shape <- square(1 #km);
  	string cityIOurl <-"https://cityio.media.mit.edu/api/table/virtual_table"; 	
  	string VIRTUAL_LOCAL_DATA <- "./../includes/virtual_table.json";
-    map<string, map> inputMatrixData;
+    map<string, unknown> inputMatrixData;
     map<string, map> outputMatrixData;
     map<string, unknown> outputSimulationData;
     map<int,rgb> buildingColors <-[-2::#red, -1::#orange,0::rgb(189,183,107), 1::rgb(189,183,107), 2::rgb(189,183,107),3::rgb(230,230,230), 4::rgb(230,230,230), 5::rgb(230,230,230),6::rgb(40,40,40),7::#cyan,8::#green,9::#gray];
@@ -53,13 +53,13 @@ global {
 		}
         write " --------------------- initGrid after try ---------------";
         write " nbCols in InitGrid  " + nbCols;
-        
-		spatial <-inputMatrixData["header"]["spatial"];
+        write inputMatrixData;
+		spatial <-map(inputMatrixData["header"])["spatial"];
 		loop i from: 0 to: nbCols-1 {
 			loop j from: 0 to: nbRows -1{
 				cityMatrix cell <- cityMatrix grid_at { i, j };
-				cell.type<-int(list(inputMatrixData["grid"][j*nbCols+i])[0]);
-				cell.depth<-int(list(inputMatrixData["grid"][j*nbCols+i])[1]);
+				cell.type<-int(list(list(inputMatrixData["grid"])[j*nbCols+i])[0]);
+				cell.depth<-int(list(list(inputMatrixData["grid"])[j*nbCols+i])[1]);
 			}
         } 
        write length(cityMatrix where (each.type=-1)); 
