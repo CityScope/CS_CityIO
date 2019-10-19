@@ -14,12 +14,12 @@ global {
  	string cityIOurl <-"https://cityio.media.mit.edu/api/table/virtual_table"; 	
  	string VIRTUAL_LOCAL_DATA <- "./../includes/virtual_table.json";
     map<string, unknown> inputMatrixData;
-    map<string, unknown> outputMatrixData;
+    map<string, map> outputMatrixData;
     map<string, unknown> outputSimulationData;
     map<int,rgb> buildingColors <-[-2::#red, -1::#orange,0::rgb(189,183,107), 1::rgb(189,183,107), 2::rgb(189,183,107),3::rgb(230,230,230), 4::rgb(230,230,230), 5::rgb(230,230,230),6::rgb(40,40,40),7::#cyan,8::#green,9::#gray];
     map<string, unknown> header;
     map<string, unknown> spatial;
-    bool updateGrid <- false parameter: "Update Grid:" category: "Grid";
+    bool updateGrid <- true parameter: "Update Grid:" category: "Grid";
 	int gridRrefresh <- 100 min: 1 max:1000 parameter: "Refresh Grid rate (cycle):" category: "Grid";
 	bool pushGridToCityIO <- false parameter: "Push Grid to cityIO every refresh cycles" category: "Grid";
 	bool pushGridToLocalFile <- false parameter: "Push Grid to a local every refresh cycles" category: "Grid";
@@ -33,13 +33,16 @@ global {
 	int cellSize;
 
 	init {
+	 write " --------------------- in global init ---------------";	
 	 do initGrid;
+	 write "---------------------- after init Grid --------------";
 	 create people number:10{
 	 	shape<-circle(1);
 	 }
 	}
     // Get a cityIO grid from a url and populate matrixData object
 	action initGrid{
+		write " --------------------- initGrid before try ---------------";	
 		try {
 			inputMatrixData <- json_file(cityIOurl).contents;
 		}
@@ -48,13 +51,15 @@ global {
 			inputMatrixData <- json_file(VIRTUAL_LOCAL_DATA).contents;
 			write #current_error + " Impossible to read from cityIO  - Connection to Internet lost or cityIO is offline - inputMatrixData is a local version from cityIO_Kendall.json";
 		}
-        
-		spatial <-inputMatrixData["header"]["spatial"];
+        write " --------------------- initGrid after try ---------------";
+        write " nbCols in InitGrid  " + nbCols;
+        write inputMatrixData;
+		spatial <-map(inputMatrixData["header"])["spatial"];
 		loop i from: 0 to: nbCols-1 {
 			loop j from: 0 to: nbRows -1{
 				cityMatrix cell <- cityMatrix grid_at { i, j };
-				cell.type<-int(inputMatrixData["grid"][j*nbCols+i][0]);
-				cell.depth<-int(inputMatrixData["grid"][j*nbCols+i][1]);
+				cell.type<-int(list(list(inputMatrixData["grid"])[j*nbCols+i])[0]);
+				cell.depth<-int(list(list(inputMatrixData["grid"])[j*nbCols+i])[1]);
 			}
         } 
        write length(cityMatrix where (each.type=-1)); 
@@ -150,7 +155,8 @@ species people skills:[moving]{
 
 experiment Display  type: gui autorun:true{
 	action _init_ {
-   		map<string, unknown> data;
+		write "------------------------- Expe init 1 ---------------------- ";
+   		map<string, map> data;
    		try {
 			data <- json_file(cityIOurl).contents;
 		}
@@ -159,12 +165,18 @@ experiment Display  type: gui autorun:true{
 			data <- json_file(VIRTUAL_LOCAL_DATA).contents;
 			write #current_error + "Connection to Internet lost or cityIO is offline - CityMatrix is a local version from cityIO_Kendall.json";
 		}
+   		write "------------------------- Expe init 2---------------------- ";
    		
-   		
-		create CityIOGAMA_model with: [nbCols::int(data["header"]["spatial"]["ncols"]), nbRows::int(data["header"]["spatial"]["nrows"]),cellSize::int(data["header"]["spatial"]["cellSize"]),inputMatrixData::data]{
+		create CityIOGAMA_model with: [nbCols::int(map(data["header"]["spatial"])["ncols"]), nbRows::int(map(data["header"]["spatial"])["nrows"]),cellSize::int(map(data["header"]["spatial"])["cellSize"]),inputMatrixData::data]{
 			//shape <-rectangle(nbCols*cellSize, nbRows*cellSize);
-			write " " + nbCols +" " + nbRows + " " + cellSize;
+			write "nbCols: " + nbCols + "nbRows: " + nbRows + " cellSize: " + cellSize + "data: " + inputMatrixData ;
 		}
+		
+		write "------------------------- Expe init 3---------------------- ";
+		
+		write simulations[0];
+		
+		write "------------------------- Expe init 4 ---------------------- ";
 	}
 
 	output {	
