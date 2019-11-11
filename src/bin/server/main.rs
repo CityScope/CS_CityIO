@@ -11,7 +11,7 @@ use actix_web::middleware::{Logger, NormalizePath};
 use actix_web::{web, App, HttpServer};
 use log::info;
 
-use handlers::{auth, clear_table, deep_get, get_table, index, list_tables, set_module, set_table};
+use handlers::{auth, clear_table, clear_module, deep_get, get_table, index, list_tables, set_module, set_table};
 use model::{JSONState, JsonUser};
 
 use diesel::prelude::*;
@@ -123,6 +123,12 @@ fn main() -> std::io::Result<()> {
             )
             .service(
                 web::resource("/api/table/clear/{name}/").route(web::get().to_async(clear_table)),
+            )
+            .service(
+                web::resource("/api/table/clear/{name}/{module}").route(web::get().to_async(clear_module)),
+            )
+            .service(
+                web::resource("/api/table/clear/{name}/{module}/").route(web::get().to_async(clear_module)),
             )
             .service(web::resource("/api/tables/list/").route(web::get().to_async(list_tables)))
             .service(web::resource("/api/tables/list").route(web::get().to_async(list_tables)))
