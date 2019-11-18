@@ -32,6 +32,10 @@ class CityioModulesHandler:
             'base_url') + self.parse_json_file('get_suffix') +\
             self.parse_json_file('table') + self.parse_json_file('module')
         self.INTERVAL = self.parse_json_file('interval')
+        self.SLACK_BOOL = self.parse_json_file(
+            'slack')
+        self.HIDDEN_TABLE_BOOL = self.parse_json_file(
+            'hidden_table')
 
     def get_ip_address(self):
         """gets user's IP"""
@@ -42,7 +46,14 @@ class CityioModulesHandler:
     def cityio_get_request(self, url):
         """handle get reuests to cityIO"""
         try:
-            response = requests.get(url)
+            if self.HIDDEN_TABLE_BOOL:
+
+                hidden_table_header = self.parse_json_file(
+                    'hidden_table_header')
+                print(hidden_table_header)
+                response = requests.get(url, headers=hidden_table_header)
+            else:
+                response = requests.get(url)
             # If the response was successful,
             # no Exception will be raised
             response.raise_for_status()
@@ -56,7 +67,13 @@ class CityioModulesHandler:
     def cityio_post_request(self, url, data):
         """handle post reuests to cityIO"""
         try:
-            response = requests.post(url, data)
+            if self.HIDDEN_TABLE_BOOL:
+                hidden_table_header = self.parse_json_file(
+                    'hidden_table_header')
+                response = requests.post(
+                    url, data, headers=hidden_table_header)
+            else:
+                response = requests.post(url, data)
             print('cityio POST response:', response)
             response.raise_for_status()
         except HTTPError as http_err:
@@ -90,10 +107,13 @@ class CityioModulesHandler:
             - cd ~
             - nano .bash_profile
             - connect to the api and create client
-            - replace slack token with the one from https://api.slack.com/apps/ALJ2FH9RV/install-on-team?
+            - replace slack token with the one from
+            https://api.slack.com/apps/ALJ2FH9RV/install-on-team?
         """
-        SLACK_TOKEN = self.parse_json_file('slack_token')
-        client = slack.WebClient(SLACK_TOKEN)
+        if self.SLACK_BOOL is False:
+            return
+        slack_token = self.parse_json_file('slack_token')
+        client = slack.WebClient(slack_token)
         # test the slack api
         client.api_call("auth.test")
         # send to slack
