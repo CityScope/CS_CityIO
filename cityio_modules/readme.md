@@ -10,6 +10,7 @@ The tool is mostly meant to be used for binary/non-dynamic modules that might ha
 ## Usage
 
 - install packages
+  - Not: Slack is using https://github.com/slackapi/python-slackclient and should be installed via `pip3 install slackclient`
   - To produce a list of needed packages, use `pipreqs`, follow instructions https://github.com/bndr/pipreqs
   - Or simply run the app and install packages as they appear in errors.
 - make sure to write your module results into file on path
