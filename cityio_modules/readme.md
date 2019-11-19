@@ -1,4 +1,5 @@
 # Modules handler for CityScope
+![MH](https://github.com/CityScope/CS_CityIO/raw/master/cityio_modules/moduleHandler.jpg "MH")
 
 This is a boilerplate tool for running a CityScope module. It is meant to shell the interaction with cityIO API and let module makers focus only on the module itself.
 
