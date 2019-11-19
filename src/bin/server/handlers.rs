@@ -336,6 +336,44 @@ pub fn set_module(
     })
 }
 
+pub fn clear_module(
+    path: web::Path<(String, String)>,
+    state: web::Data<JSONState>,
+    req: HttpRequest,
+) -> impl Future<Item = HttpResponse, Error = Error>{
+    let (table_name, module_name) = path.to_owned();
+
+    let mut map = state.lock().unwrap();
+    let user_map = map.to_owned();
+    let users = user_map.get("users").unwrap();
+    let tables = map.get_mut("tables").unwrap();
+
+    let table_data = tables.get_mut(&table_name)
+                           .and_then(|x| x.as_object_mut())
+                           .unwrap();
+
+    match &table_data.get("header").and_then(|h| h.get("user")) {
+        None => (), // public
+        Some(u) => {
+            let header = &req.headers();
+            if !check_auth(u.as_str().unwrap(), &header, users) {
+                return fut_ok(un_authed("access restricted"));
+            }
+        }
+    }
+
+    if table_data.contains_key(&module_name) {
+        table_data.remove(&module_name);
+        let hashes = table_data.get_mut("meta")
+                               .and_then(|x| x.get_mut("hashes"))
+                               .and_then(|x| x.as_object_mut())
+                               .unwrap();
+        hashes.remove(&module_name);
+    }
+
+    fut_ok(HttpResponse::Ok().json(json!({"status":"ok"})))
+}
+
 pub fn clear_table(
     name: web::Path<String>,
     state: web::Data<JSONState>,
