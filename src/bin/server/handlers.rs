@@ -430,24 +430,39 @@ impl User {
 pub fn auth(
     pool: web::Data<Pool>,
     pl: web::Payload,
+    req: web::HttpRequest,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     pl.concat2().from_err().and_then(move |body| {
         let con = &pool.get().unwrap();
 
-        let credential: User = match serde_json::from_slice(&body){
-            Ok(c) => c,
-            Err(_) => return fut_ok(un_authed("could not parse payload to json")),
+        // FIXME: we no longer need this
+        // let credential: User = match serde_json::from_slice(&body){
+        //     Ok(c) => c,
+        //     Err(_) => return fut_ok(un_authed("could not parse payload to json")),
+        // };
+
+        let headers = req.headers();
+
+        let username = match headers.get("username") {
+            Some(u) => u.to_str().unwrap(),
+            None => return fut_ok(un_authed("username not found in header"))
         };
 
-        // TODO: each value wil be base64 encoded
-        let (u, p) = match credential.decode_base64() {
-            Ok(r) => r,
-            Err(e) => return fut_ok(un_authed(e)),
+        let password = match headers.get("password") {
+            Some(p) => p.to_str().unwrap(),
+            None => return fut_ok(un_authed("password not found in header"))
         };
+        
+        // // TODO: each value wil be base64 encoded
+        // let (u, p) = match credential.decode_base64() {
+        //     Ok(r) => r,
+        //     Err(e) => return fut_ok(un_authed(e)),
+        // };
 
-        match auth_user(con, &u, &p) {
+        match auth_user(con, username, password) {
         // match auth_user(con, &credential.username, &credential.password) {
             Some(u) => {
+                // TODO give a list of authed tables
                 let usr = json!({"user": u.username, "id": u.id, "token": u.hash, "is_super": u.is_super});
                 fut_ok(HttpResponse::Ok().json(usr))
             },
