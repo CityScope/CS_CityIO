@@ -95,6 +95,10 @@ fn main() -> std::io::Result<()> {
             .wrap(NormalizePath)
             .wrap(
                 Cors::new()
+                    // allowing this for debug purposes
+                    // TODO: turn this off at production
+                    .allowed_origin("http://localhost:4200")
+                    .allowed_origin("https://github.com")
                     .allowed_methods(vec!["GET", "POST"])
                     .send_wildcard()
                     .allowed_headers(vec![
