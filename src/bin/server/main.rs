@@ -97,11 +97,12 @@ fn main() -> std::io::Result<()> {
                 Cors::new()
                     // allowing this for debug purposes
                     // TODO: turn this off at production
-                    .allowed_origin("http://localhost:4200")
-                    .allowed_origin("http://localhost:5500")
-                    .allowed_origin("http://localhost:1234")
-                    .allowed_origin("https://github.com")
-                    .allowed_origin("https://cityio.media.mit.edu")
+                    // .allowed_origin("http://localhost:4200")
+                    // .allowed_origin("http://localhost:5500")
+                    // .allowed_origin("http://localhost:1234")
+                    // .allowed_origin("https://github.com")
+                    // .allowed_origin("https://cityio.media.mit.edu")
+                    // .allowed_origin("https://cityscope.media.mit.edu")
                     .allowed_methods(vec!["GET", "POST"])
                     .send_wildcard()
                     .allowed_headers(vec![
