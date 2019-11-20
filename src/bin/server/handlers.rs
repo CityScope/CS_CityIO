@@ -430,16 +430,11 @@ impl User {
 pub fn auth(
     pool: web::Data<Pool>,
     pl: web::Payload,
+    state: web::Data<JSONState>,
     req: web::HttpRequest,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    pl.concat2().from_err().and_then(move |body| {
+    pl.concat2().from_err().and_then(move |_body| {
         let con = &pool.get().unwrap();
-
-        // FIXME: we no longer need this
-        // let credential: User = match serde_json::from_slice(&body){
-        //     Ok(c) => c,
-        //     Err(_) => return fut_ok(un_authed("could not parse payload to json")),
-        // };
 
         let headers = req.headers();
 
@@ -453,17 +448,29 @@ pub fn auth(
             None => return fut_ok(un_authed("password not found in header"))
         };
         
-        // // TODO: each value wil be base64 encoded
-        // let (u, p) = match credential.decode_base64() {
-        //     Ok(r) => r,
-        //     Err(e) => return fut_ok(un_authed(e)),
-        // };
-
         match auth_user(con, username, password) {
         // match auth_user(con, &credential.username, &credential.password) {
             Some(u) => {
-                // TODO give a list of authed tables
-                let usr = json!({"user": u.username, "id": u.id, "token": u.hash, "is_super": u.is_super});
+                let map = state.lock().expect("unable to lock state, @auth()");
+                
+                let tables = map.get("tables").expect("tables not found in state");
+
+                let mut owned = Vec::new();
+
+                for key in tables.keys() {
+                    if let Some(user) = tables.get(key)
+                    .and_then(|table| table.get("header")) 
+                    .and_then(|header| header.get("user"))
+                    .and_then(|user| user.as_str())
+                    {
+                        if user == u.username {
+                            owned.push(key)
+                        }
+                    }
+                }
+
+                let usr = json!({"user": u.username, "id": u.id, "token": u.hash, "is_super": u.is_super, "tables":owned });
+
                 fut_ok(HttpResponse::Ok().json(usr))
             },
             None => fut_ok(un_authed("user not found")),
