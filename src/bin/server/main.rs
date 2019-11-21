@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 use actix_cors::Cors;
 use actix_web::http::header;
 use actix_web::middleware::{Logger, NormalizePath};
-use actix_web::{web, App, HttpServer};
+use actix_web::{http, web, App, HttpServer};
 use log::info;
 
 use handlers::{auth, clear_table, clear_module, deep_get, get_table, index, list_tables, set_module, set_table};
@@ -137,7 +137,10 @@ fn main() -> std::io::Result<()> {
             .service(
                 web::resource("/api/table/{name}/{tail:.*}").route(web::get().to_async(deep_get)),
             )
-            .service(web::resource("/users/authenticate").route(web::post().to_async(auth)))
+            .service(web::resource("/users/authenticate")
+            .route(web::post().to_async(auth))
+            .route(web::method(http::Method::OPTIONS).to_async(auth))
+            )
             .service(index)
         // fs::Files::new("/", "./static").index_file("index.html"),
     })
