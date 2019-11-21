@@ -103,7 +103,7 @@ fn main() -> std::io::Result<()> {
                     // .allowed_origin("https://github.com")
                     // .allowed_origin("https://cityio.media.mit.edu")
                     // .allowed_origin("https://cityscope.media.mit.edu")
-                    .allowed_methods(vec!["GET", "POST"])
+                    .allowed_methods(vec!["GET", "POST", "OPTIONS"])
                     .send_wildcard()
                     .allowed_headers(vec![
                         header::AUTHORIZATION,
