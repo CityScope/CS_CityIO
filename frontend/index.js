@@ -85,7 +85,12 @@ async function getTables() {
 
       let thisTableHeader = thisTable.header;
       let tableSpatial;
-      if (thisTableHeader && thisTableHeader.spatial) {
+      if (
+        thisTableHeader &&
+        thisTableHeader.spatial &&
+        thisTableHeader.spatial.longitude &&
+        thisTableHeader.spatial.latitude
+      ) {
         tableSpatial = thisTableHeader.spatial;
       } else {
         counter = counter + 1;
