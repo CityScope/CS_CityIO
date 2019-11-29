@@ -150,7 +150,6 @@ pub fn create_user<'a>(con: &PgConnection, base64: &'a str, is_super: bool) -> U
     use schema::users;
 
     let now: DateTime<Utc> = Utc::now();
-
     let base = base64.to_owned();
 
     let b = decode(base64).expect("Error decoding base64");
@@ -160,7 +159,10 @@ pub fn create_user<'a>(con: &PgConnection, base64: &'a str, is_super: bool) -> U
     let name_pass: Vec<&str> = comb.split(':').collect();
     let username = &name_pass[0];
 
-    let new_base = format!("{} {:?}", &base, &now);
+    let mut now_trimmed = format!("{:?}", &now);
+    let _ = now_trimmed.split_off(26);
+
+    let new_base = format!("{} {}Z", &base, &now_trimmed);
 
     println!("{}", &new_base);
 

@@ -95,14 +95,14 @@ fn main() -> std::io::Result<()> {
             .wrap(NormalizePath)
             .wrap(
                 Cors::new()
-                    .allowed_methods(vec!["GET", "POST", "OPTIONS"])
+                    // .allowed_methods(vec!["GET", "POST", "OPTIONS"])
                     .send_wildcard()
                     // disabling this to allow All headers
-                    .allowed_headers(vec![
-                        header::AUTHORIZATION,
-                        header::ACCEPT,
-                        header::CONTENT_TYPE,
-                    ]),
+                    // .allowed_headers(vec![
+                    //     header::AUTHORIZATION,
+                    //     header::ACCEPT,
+                    //     header::CONTENT_TYPE,
+                    // ]),
             )
             .service(web::resource("/api/table/{name}").route(web::get().to_async(get_table)))
             .service(

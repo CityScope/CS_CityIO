@@ -9,7 +9,14 @@ fn main() {
 
     // need base variable
     //
-    let credentials = "kermit:CityScience";
+    // let credentials = "kermit:CityScience";
+
+    // let credentials = "mediterranean:gs5eu_pq";
+    // let credentials = "dahurian:mvz!@76k";
+    // let credentials = "dawyck:kmy4-=uf";
+    // let credentials = "pallis:bxr2@h&=";
+    // let credentials = "norway:4hv-u9pr";
+    let credentials = "briot:hg92w+7q";
     let base = encode(credentials);
 
     let user = create_user(&connection, &base, false);
