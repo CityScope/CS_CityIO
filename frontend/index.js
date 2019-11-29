@@ -85,7 +85,12 @@ async function getTables() {
 
       let thisTableHeader = thisTable.header;
       let tableSpatial;
-      if (thisTableHeader && thisTableHeader.spatial) {
+      if (
+        thisTableHeader &&
+        thisTableHeader.spatial &&
+        thisTableHeader.spatial.longitude &&
+        thisTableHeader.spatial.latitude
+      ) {
         tableSpatial = thisTableHeader.spatial;
       } else {
         counter = counter + 1;
@@ -236,10 +241,9 @@ function makeMap(tablesArray, counter) {
     var deleteButton = document.getElementById("delete");
     deleteButton.onclick = async function(event) {
       event.preventDefault();
-      var fieldName = document.getElementById("fieldName");
-      let delFieldURL = removeTableURL + "/" + fieldName.value.toString();
-      let res = await postCityIO(delFieldURL, null);
-      console.log(res);
+      var moduleName = document.getElementById("fieldName");
+      let delFieldURL = removeTableURL + "/" + moduleName.value.toString();
+      let res = await getCityIO(delFieldURL);
       responseDiv.innerHTML = JSON.stringify(res);
     };
 
