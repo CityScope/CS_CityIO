@@ -1,4 +1,5 @@
 # Modules handler for CityScope
+
 ![MH](https://github.com/CityScope/CS_CityIO/raw/master/cityio_modules/moduleHandler.jpg "MH")
 
 This is a boilerplate tool for running a CityScope module. It is meant to shell the interaction with cityIO API and let module makers focus only on the module itself.
@@ -10,12 +11,16 @@ The tool is mostly meant to be used for binary/non-dynamic modules that might ha
 
 ## Usage
 
-- install packages
-  - Not: Slack is using https://github.com/slackapi/python-slackclient and should be installed via `pip3 install slackclient`
-  - To produce a list of needed packages, use `pipreqs`, follow instructions https://github.com/bndr/pipreqs
-  - Or simply run the app and install packages as they appear in errors.
-- make sure to write your module results into file on path
-- run `$ python3 cityio_modules.py`
+-   install packages
+    -   Not: Slack is using https://github.com/slackapi/python-slackclient and should be installed via `pip3 install slackclient`
+    -   To produce a list of needed packages, use `pipreqs`, follow instructions https://github.com/bndr/pipreqs
+    -   Or simply run the app and install packages as they appear in errors.
+-   make sure to write your module results into file on path
+-   run `$ python3 cityio_modules.py`
+
+## Testing
+
+A dummy module (`module_example.py`) is availble for users to start building their modules on top. Running `cityio_modules.py` out of the box will run this module and create some dummy data for testing.
 
 ## Settings
 
@@ -50,4 +55,4 @@ cityio POST response: <Response [200]>
 
 # Errors
 
-- cityIO channel on slack should report for some events, such as starting this app or failing to run the command line module.
+-   cityIO channel on slack should report for some events, such as starting this app or failing to run the command line module.
