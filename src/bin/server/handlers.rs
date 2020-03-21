@@ -343,14 +343,30 @@ pub fn clear_module(
 ) -> impl Future<Item = HttpResponse, Error = Error>{
     let (table_name, module_name) = path.to_owned();
 
+
+    if table_name == "" {
+        return fut_ok(not_acceptable("empty table_name"))
+    }
+
+    if module_name == "" {
+        return fut_ok(not_acceptable("empty module_name"))
+    }
+
     let mut map = state.lock().unwrap();
     let user_map = map.to_owned();
     let users = user_map.get("users").unwrap();
     let tables = map.get_mut("tables").unwrap();
 
     let table_data = tables.get_mut(&table_name)
-                           .and_then(|x| x.as_object_mut())
-                           .unwrap();
+                           .and_then(|x| x.as_object_mut());
+
+    if table_data.is_none() {
+        let mes = format!("invalid table_name: {}", &table_name);
+        warn!("{}", &mes);
+        return fut_ok(not_acceptable(&mes))
+    }
+
+    let table_data = table_data.unwrap();
 
     match &table_data.get("header").and_then(|h| h.get("user")) {
         None => (), // public
