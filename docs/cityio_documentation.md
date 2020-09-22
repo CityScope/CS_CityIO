@@ -1,6 +1,27 @@
+# What is CityIO?
+
+- data-hub (dump?) to have several clients work together
+
+- (lower case)architecture to enforce collaboration within network
+
+- server program
+  - saves tables to have different software (visualization, simulation) read/write information
+  - exposes a REST API (=url's) to serve json files, representiving table info
+
+# Resources
+
+- [API](https://github.com/mitmedialab/cityioserver/wiki/API)
+
+    shows the endpoint URLs for clients to operate various request through HTTP. (ex. Getting a table data, Updating table data... etc.)
+
+- [Client Examples](https://github.com/mitmedialab/cityioserver/wiki/Client-Examples)
+
+    shows hello world examples from each client in different frameworks (GAMA, Grasshopper, Unity ... etc)
 ## [welcome page](https://cityio.media.mit.edu) with links to available tables
 
-https://cityio.media.mit.edu
+# API
+
+[baseurl] https://cityio.media.mit.edu
 
 ## dev endpoints
 endpoints in development will have /dev before the api
@@ -63,3 +84,22 @@ params:
 
 **be careful! will delete all data from memory cache and DB** 
 
+# How to run it Locally
+
+The current version is developed using rust.
+
+1. install [rust](https://www.rust-lang.org/tools/install)
+
+2. clone this repository
+
+3. clone [sha256 repo](https://github.com/yasushisakai/sha256)
+
+    this repo should live in the same directory as the main repo
+
+4. get db credentials from yasushi, save it in the root of this repo
+
+5. ```cargo run --bin server --release```
+
+  this will compile the program and run it in port 8080
+
+the server will now run locally
