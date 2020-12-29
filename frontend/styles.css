@@ -16,23 +16,37 @@
     z-index: 1000;
 }
 
-.log {
-    max-height: 10em;
-    max-width: 20em;
-    overflow: scroll;
-    overflow-x: hidden;
-    background-color: rgba(45, 57, 62, 0.466);
-    font-family: "Roboto Condensed";
-    color: rgb(180, 180, 180);
-    font-size: 1em;
-    line-height: 1em;
-    z-index: 999;
+
+.uptime {
+    height: 50vh;
+    top: 10vh;
+    width: 20vw;
+    right: 2vw;
+    z-index: 1000;
+    position: fixed;
+    overflow: hidden;
     -webkit-box-shadow: 0em 0em 0.5em 0.5em rgba(0, 0, 0, 0.5);
     -moz-box-shadow: 0em 0em 0.5em 0.5em rgba(0, 0, 0, 0.5);
     box-shadow: 0em 0em 2em 1em rgba(0, 0, 0, 0.5);
-    padding: 0.5em;
+}
 
-    margin-bottom: 5em;
+.log {
+    height: 30vh;
+    bottom: 5vh;
+    width: 20vw;
+    right: 2vw;
+    z-index: 1000;
+    position: fixed;
+    overflow: scroll;
+    overflow-x: hidden;
+    background-color: rgba(45, 57, 62, 0.8);
+    font-family: "Roboto Condensed";
+    color: rgb(180, 180, 180);
+    font-size: 0.8em;
+    line-height: 1em;
+    -webkit-box-shadow: 0em 0em 0.5em 0.5em rgba(0, 0, 0, 0.5);
+    -moz-box-shadow: 0em 0em 0.5em 0.5em rgba(0, 0, 0, 0.5);
+    box-shadow: 0em 0em 2em 1em rgba(0, 0, 0, 0.5);
 }
 .log a:link {
     color: #ed5066;

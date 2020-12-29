@@ -2,7 +2,8 @@
 
 ### Building production into `dist` folder
 
-`parcel build frontend/index.html --public-url https://cityscope.media.mit.edu/CS_CityIO/`
+go to the parent project folder (`cs_cityio`):
+```parcel build frontend/index.html --public-url https://cityscope.media.mit.edu/CS_CityIO/```
 
 Note: in some cases might need this to fix missing plugin note:
 `npm install babel-plugin-transform-runtime`
@@ -24,7 +25,7 @@ or force-add it if you don't want to change your `.gitignore`
 `git add dist -f`
 
 Commit!
-
+`git add -A`
 `git commit -m "gh-pages commit"`
 
 ### Step 3

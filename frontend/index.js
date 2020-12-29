@@ -163,7 +163,6 @@ async function getTables() {
             marker.on("click", function () {
                 //pass the marker data to setup method
                 modalSetup(marker);
-                infoDiv("getting header for: " + url);
             });
         }
     }
@@ -283,19 +282,11 @@ function syntaxHighlight(json) {
 //make info div [on screen console] or add text to it
 function infoDiv(text) {
     let d = document.getElementById("log");
-    // clear div if too much text
-    if (d.scrollHeight > 5000) {
-        d.innerHTML = null;
-    } else {
-        d.innerHTML += text + "<p></p>";
-        d.scrollTop = d.scrollHeight;
-    }
-    return;
+    d.innerHTML += text + "<p></p>";
+    d.scrollTop = d.scrollHeight;
 }
 
 //////////////////////////////////////////
 // APP START
 //////////////////////////////////////////
 getTables();
-
-// getCityIO("https://cityio.media.mit.edu/api/table/hidden_table", myHeaders);
