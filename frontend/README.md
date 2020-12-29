@@ -8,9 +8,9 @@ This repo provides the code for a front-end interface of the cityIO backend serv
 
 ### Dependencies for test, develop and push to git
 
-- from a dev environment: an up to date environnement: Debian Buster, Ubuntu 18.10
-- get git (optionnal if you won't commit to this repo)
-- Get [nodejs] (probably adding the latest node repo for your distrib to your apt sources.list)
+- from a dev environment: an up to date environment: Debian Buster, Ubuntu 18.10
+- get git (optional if you won't commit to this repo)
+- Get [nodejs] (probably adding the latest node repo for your dist to your apt sources.list)
 - Get [parcelJS](https://parceljs.org/) (`npm install -g parcel-bundler`)
 - Clone repo (using git or downloading it above)
 - run using `parcel index.html`
@@ -18,9 +18,9 @@ This repo provides the code for a front-end interface of the cityIO backend serv
 
 ### dependencies for prod env
 
-a stable tested environnement atm: debian Stretch, Ubuntu 18.04
+a stable tested environment atm: debian Stretch, Ubuntu 18.04
 
-- get git (optionnal if you won't commit to this repo)
+- get git (optional if you won't commit to this repo)
 - Get [nodejs] (probably from the apt repo)
 - Get [parcelJS](https://parceljs.org/) (`npm install -g parcel-bundler`)
 - Clone repo (using git or downloading it above)

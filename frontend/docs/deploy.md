@@ -19,35 +19,25 @@ Remove the `dist` directory from the project’s `.gitignore` (or skip and force
 
 Make sure git knows about your subtree (the subfolder with your site).
 
-```sh
-git add dist
-```
+```git add dist```
 
 or force-add it if you don't want to change your `.gitignore`
 
-```sh
-git add dist -f
-```
+```git add dist -f```
 
 Commit!
 
-```sh
-git commit -m "gh-pages commit"
-```
+```git commit -m "gh-pages commit"```
 
 ### Step 3
 
 Use subtree push to send it to the `gh-pages` branch on GitHub.
 
-```sh
-git subtree push --prefix dist origin gh-pages
-```
+```git subtree push --prefix dist origin gh-pages```
 
 If this gets an error [see below], try `force` push:
 
-```sh
-git push origin `git subtree split --prefix dist master`:gh-pages --force
-```
+```git push origin `git subtree split --prefix dist master`:gh-pages --force```
 
 ---
 
