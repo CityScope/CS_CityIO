@@ -1,5 +1,6 @@
-pub mod user;
+// pub mod user;
 pub mod table;
+pub mod module;
 
 use actix::Addr;
 use actix_redis::{Command, RedisActor};

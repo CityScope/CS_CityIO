@@ -1,11 +1,12 @@
-mod user;
+// mod user;
 mod table;
+mod module;
 
 use serde::Serialize;
 use std::fmt::Debug;
 
-pub use user::{User, PartialUser};
-pub use table::{Table, PartialTable};
+pub use module::Module;
+pub use table::{TempTable, Table};
 
 pub trait Settable: Serialize + Debug {
     fn domain_prefix() -> String;
@@ -21,7 +22,7 @@ pub trait Settable: Serialize + Debug {
         return format!("{}:{}", Self::domain_prefix(), &self.id());
     }
 
-    fn json(&self) -> String {
+    fn json(&self)-> String {
         serde_json::to_string(&self).expect("I should be Serialize-able")
     }
 }
