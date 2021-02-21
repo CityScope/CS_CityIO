@@ -94,24 +94,26 @@ pub async fn deep_get(
         }
     };
     
-    // we should compile the table
-
-    // check if there is a module
-
-    log::debug!("table id: {}", &table_id);
-
-    // get table
-
+    let table_data = table.compile(&redis).await;
 
     let dirs: Vec<String> = tail
     .split("/")
     .filter(|s|s!=&"")
-    .map(|s|s.to_string())
-    .collect();
+    .map(|s|s.to_string()).collect();
 
     log::debug!("path:{:?}", dirs);
 
-    Ok(HttpResponse::Ok().body("ok"))
+    let mut value = serde_json::to_value(table_data)
+        .expect("BTreeMap should be convertable to Json Value");
+
+    for d in dirs {
+        value = match value.get(d){
+            Some(v) => v.to_owned(),
+            None => {return Ok(HttpResponse::NoContent().body("data not found"))}
+        }
+    }
+
+    Ok(HttpResponse::Ok().json(value))
 }
 
 pub async fn post(
