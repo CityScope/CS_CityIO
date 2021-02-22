@@ -47,6 +47,9 @@ impl Table {
         result
     }
 
+    pub fn hash(&self) -> String{
+        root_hash(&self.table_name, &self.hashes)
+    }
 }
 
 impl Settable for Table {
@@ -87,14 +90,7 @@ impl TempTable{
     }
 
     pub fn root_hash(&self) -> String {
-        let cat = self.hashes.iter()
-            .map(|(k,v)|format!("{} {}",k,v))
-            .collect::<Vec<String>>()
-            .join(" ");
-
-        let cat = vec![self.table_name.to_string(), cat].join(" "); 
-
-        encode(Sha256::digest(cat.as_bytes())).into_string()
+        root_hash(&self.table_name, &self.hashes)
     }
 }
 
@@ -117,4 +113,13 @@ impl From<TempTable> for Table{
             hashes: tmp.hashes
         }
     }
+}
+
+fn root_hash(table_name: &str, hashes: &BTreeMap<String, String>) -> String {
+    let cat = hashes.iter()
+            .map(|(k,v)|format!("{} {}",k,v))
+            .collect::<Vec<String>>()
+            .join(" ");
+        let cat = vec![table_name.to_string(), cat].join(" "); 
+        encode(Sha256::digest(cat.as_bytes())).into_string()
 }

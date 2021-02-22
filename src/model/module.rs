@@ -7,7 +7,7 @@ use crate::model::Settable;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Module {
     name: String,
-    data: Value
+    pub data: Value
 }
 
 impl Settable for Module{

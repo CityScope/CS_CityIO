@@ -51,6 +51,7 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::resource("/api/table/{table_name}/{tail:.*}")
                 .route(web::get().to(table::deep_get)) // .route(web::get().to(list_users))
+                .route(web::post().to(table::deep_post)),
             )
             .service(
                 web::resource("/api/tables/list")
