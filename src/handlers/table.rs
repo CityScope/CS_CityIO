@@ -1,13 +1,13 @@
 use crate::{
     model::{Module, Settable, Table, TempTable},
-    redis_helper::{redis_add, redis_delete, redis_get_slice},
+    redis_helper::{redis_add, redis_get_slice},
 };
 use actix::prelude::*;
 use actix_redis::{Command, RedisActor};
 use actix_web::{web, Error as AWError, HttpResponse};
 use futures::future::{join, join_all};
 use redis_async::{resp::RespValue, resp_array};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::iter::FromIterator;
 
@@ -57,6 +57,105 @@ pub async fn list_head(redis: web::Data<Addr<RedisActor>>) -> Result<HttpRespons
         Ok(HttpResponse::Ok().json(list))
     } else {
         Ok(HttpResponse::InternalServerError().finish())
+    }
+}
+
+pub async fn raw_get(
+    redis: web::Data<Addr<RedisActor>>,
+    table_id: web::Path<String>
+) -> Result<HttpResponse, AWError> {
+    let id = table_id.into_inner();
+    
+    let get: Option<Table> = redis_get_slice(&id, "table", &redis)
+        .await
+        .and_then(|slice| serde_json::from_slice(&slice).expect("data shoulde be Deserializable as Table"));
+
+    match get {
+        Some(table) => Ok(HttpResponse::Ok().json(table)),
+        None => Ok(HttpResponse::NoContent().body("table with id not found"))
+    }
+}
+
+pub async fn remove(
+    redis: web::Data<Addr<RedisActor>>,
+    table_name: web::Path<String>,
+) -> Result<HttpResponse, AWError> {
+
+    // this just deregisters from the head,
+    // elements of that table will remain.
+    let table_name = table_name.into_inner();
+    
+    let domain = format!("head:{}", &table_name);
+
+    let rm_heads = redis.send(Command(resp_array!["SREM", "heads", &table_name]));
+    let rm_head = redis.send(Command(resp_array!["DEL", &domain]));
+
+    let (head, _heads) = join(rm_head, rm_heads).await;
+
+    match head? {
+        Ok(RespValue::Integer(x)) => {
+            if x == 1 {
+                Ok(HttpResponse::Ok().json(json!({"status": "ok"})))
+            } else {
+                Ok(HttpResponse::Ok().json(json!({"status": "ok", "mes":"table wasn't found"})))
+            }
+        },
+        _ => Ok(HttpResponse::Ok().json(json!({"status": "error", "mes":"failed to delete table"})))
+    } 
+}
+
+pub async fn remove_module(
+    redis: web::Data<Addr<RedisActor>>,
+    path: web::Path<(String, String)>,
+) -> Result<HttpResponse, AWError> {
+    let (table_name, module_name) = path.into_inner();
+    // get the table
+    let table_id = redis_get_slice(&table_name, "head", &redis)
+        .await
+        .and_then(|slice| Some(String::from_utf8(slice).expect("this should be convertable to a string")));
+    
+    if table_id.is_none() {
+        log::debug!("could not find table_id");
+        return Ok(HttpResponse::NoContent().body("cannot find table_id"))
+    }
+
+    let mut table = match redis_get_slice(&table_id.unwrap(), "table", &redis)
+        .await
+        .and_then(|slice|{
+            let t:Table = serde_json::from_slice(&slice).expect("Table should be Deserializable");
+            Some(t)
+        }) {
+        Some(t) => t,
+        None => {
+            log::debug!("could not find table");
+            return Ok(HttpResponse::NoContent().body("could not find table"))
+        }
+    };
+
+    // remove from hashes
+    match table.hashes.remove(&module_name){
+        Some(_m) => {
+            let prev_hash = &table.hash.to_string();
+            let new_hash = table.hash();
+            table.hash = new_hash.to_string();
+            table.prev = prev_hash.to_string();
+            let update = redis_add(table, &redis);
+            let domain = format!("head:{}", &table_name);
+            let head = redis.send(Command(resp_array!["SET", &domain, &new_hash]));
+            let (update, _head) = join(update, head).await;
+            match update {
+                true => {
+                    let result = json!({"status":"ok", "id": &new_hash});
+                    return Ok(HttpResponse::Ok().json(result))
+                },
+                false => {
+                    return Ok(HttpResponse::InternalServerError().body("failed to update head"))
+                }
+            }
+        },
+        None => {
+            return Ok(HttpResponse::Ok().body("module wasn't found, no change"))
+        }
     }
 }
 
