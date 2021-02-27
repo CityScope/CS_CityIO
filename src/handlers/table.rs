@@ -8,6 +8,7 @@ use actix_web::{web, Error as AWError, HttpResponse};
 use futures::future::{join, join_all};
 use redis_async::{resp::RespValue, resp_array};
 use serde_json::{json, Value};
+use serde::{Serialize, Deserialize};
 use std::collections::BTreeMap;
 use std::iter::FromIterator;
 
@@ -36,6 +37,77 @@ pub async fn get(
     let compiled = table.compile(&redis).await;
 
     Ok(HttpResponse::Ok().json(compiled))
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Tag(String, String);
+
+impl Settable for Tag {
+    fn domain_prefix() -> String {
+        "tag".to_string()
+    }
+
+    fn id(&self) -> String {
+        self.0.to_string()
+    }
+
+}
+
+impl Tag {
+    pub fn new(tag: &str, id: &str) -> Self {
+        Self(tag.to_string(), id.to_string())
+    }
+}
+
+pub async fn tag_table_id(
+    redis: web::Data<Addr<RedisActor>>,
+    path: web::Path<(String, String)>,
+) -> Result<HttpResponse, AWError> {
+    
+    let (tag_name, table_id) = path.into_inner();
+
+    let domain = format!("table:{}", table_id);
+
+    match redis.send(Command(resp_array!["EXISTS", &domain])).await? {
+        Ok(RespValue::Integer(x)) if x == 0 => {
+            return Ok(HttpResponse::NoContent()
+                .body("no table with id found"))
+        },
+        Ok(RespValue::Integer(x)) if x == 1 => {
+            () 
+        },
+        _=> {
+            return Ok(HttpResponse::InternalServerError().body("something went wrong on redis command EXIST"))
+        }
+    };
+
+    let tag = Tag::new(&tag_name, &table_id);
+    match redis_add(tag, &redis).await {
+        true => Ok(HttpResponse::Ok()
+            .json(json!({"status":"ok", "name":&tag_name, "id":&table_id})))
+        ,
+        false => Ok(HttpResponse::InternalServerError().body("error adding tag"))
+    }
+
+}
+
+pub async fn get_tag(
+    redis: web::Data<Addr<RedisActor>>,
+    tag: web::Path<String>,
+) -> Result<HttpResponse, AWError> {
+    
+    let tag= tag.into_inner();
+        
+    let id = redis_get_slice(&tag, "tag", &redis).await;
+
+    match id {
+        Some(x) => {
+            return Ok(HttpResponse::Ok().body(x))
+        },
+        None => {
+            return Ok(HttpResponse::NoContent().body("tag not found"))
+        }
+    }
 }
 
 pub async fn list_head(redis: web::Data<Addr<RedisActor>>) -> Result<HttpResponse, AWError> {

@@ -1,12 +1,46 @@
 use crate::model::Settable;
 use actix::Addr;
 use actix_redis::{Command, RedisActor};
-use actix_web::web;
+use actix_web::{web, Error as AWError, HttpResponse};
 use futures::future::{join, join_all};
 use redis_async::{resp::RespValue as Value, resp_array};
+use serde_json::json;
+
+pub async fn get(
+    redis: &web::Data<Addr<RedisActor>>,
+    id: &str,
+    prefix: &str,
+) -> Result<HttpResponse, AWError> {
+    match get_slice(&id, prefix, &redis).await {
+        Some(s) => {
+            Ok(HttpResponse::Ok().content_type("application/json").body(s))
+        },
+        None => Ok(HttpResponse::NoContent().body("blob not found"))
+    }
+}
+
+pub async fn post(
+    redis: &web::Data<Addr<RedisActor>>,
+    payload: &impl Settable,
+) -> Result<HttpResponse, AWError> {
+    match add(payload, redis).await {
+        true => {
+            let result = json!({
+                "status":"ok",
+                "id": payload.id(),
+            });
+            Ok(HttpResponse::Ok().json(result))
+        },
+        false => {
+            Ok(HttpResponse::InternalServerError()
+                .body("error adding Settable object"))
+        }
+    }
+}
+
 
 // TODO this is obscuring the error, not best practice
-pub async fn redis_add(obj: impl Settable, redis: &web::Data<Addr<RedisActor>>) -> bool {
+pub async fn add(obj: &impl Settable, redis: &web::Data<Addr<RedisActor>>) -> bool {
     let add = redis.send(Command(resp_array!["SET", obj.domain(), obj.json()]));
 
     let plural_domain = format!("{}s", obj.prefix());
@@ -14,7 +48,7 @@ pub async fn redis_add(obj: impl Settable, redis: &web::Data<Addr<RedisActor>>) 
     let list = redis.send(Command(resp_array![
         "SADD",
         &plural_domain,
-        &obj.list_item()
+        &obj.id()
     ]));
 
     let (add, _list) = join(add, list).await;
@@ -26,27 +60,7 @@ pub async fn redis_add(obj: impl Settable, redis: &web::Data<Addr<RedisActor>>) 
     false
 }
 
-// to delete the object, you need to get it first
-// in order to remove it from the SET
-pub async fn redis_delete(obj: impl Settable, redis: &web::Data<Addr<RedisActor>>) -> bool {
-    let del = redis.send(Command(resp_array!["DEL", obj.domain()]));
-    let plural_domain = format!("{}s", obj.domain());
-    let pop = redis.send(Command(resp_array![
-        "SREM",
-        &plural_domain,
-        &obj.list_item()
-    ]));
-
-    let (del, _) = join(del, pop).await;
-
-    if let Ok(Ok(Value::Integer(x))) = del {
-        return x == 1;
-    }
-
-    false
-}
-
-pub async fn redis_get_slice(
+pub async fn get_slice(
     id: &str,
     domain_prefix: &str,
     redis: &web::Data<Addr<RedisActor>>,
@@ -62,10 +76,10 @@ pub async fn redis_get_slice(
     }
 }
 
-pub async fn redis_get_list(
+pub async fn get_list(
     domain: &str,
     redis: &web::Data<Addr<RedisActor>>,
-) -> Option<Vec<(String, String)>> {
+) -> Option<Vec<String>> {
     let plural = format!("{}s", domain);
 
     let set = redis.send(Command(resp_array!["SMEMBERS", &plural])).await;
@@ -76,9 +90,9 @@ pub async fn redis_get_list(
 
             for e in x {
                 if let Value::BulkString(x) = e {
-                    let list_item: (String, String) = serde_json::from_slice(&x)
-                        .expect("data format for list item should be (String, String)");
-                    result.push(list_item);
+                    let id = String::from_utf8(x)
+                        .expect("id should be utf-8");
+                    result.push(id);
                 }
             }
 
@@ -88,7 +102,7 @@ pub async fn redis_get_list(
     }
 }
 
-pub async fn redis_get_slices(
+pub async fn get_slices(
     ids: &Vec<String>,
     domain_prefix: &str,
     redis: &web::Data<Addr<RedisActor>>,

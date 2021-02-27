@@ -25,10 +25,6 @@ impl Settable for User {
         self.id.to_string()
     }
 
-    fn list_item(&self) -> String {
-        serde_json::to_string(&vec![&self.id, &self.nickname])
-            .expect("User-Settable should be Serializable")
-    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

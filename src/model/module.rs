@@ -21,10 +21,6 @@ impl Settable for Module{
         encode(Sha256::digest(&raw)).into_string()
     }
 
-    fn list_item(&self) -> String {
-        serde_json::to_string(&(&self.id(), &self.name))
-            .expect("(String, String) should be Serializedable")
-    }
 }
 
 impl<'a> Settable for &'a Module {
@@ -38,10 +34,6 @@ impl<'a> Settable for &'a Module {
         encode(Sha256::digest(&raw)).into_string()
     }
 
-    fn list_item(&self) -> String {
-        serde_json::to_string(&(&self.id(), &self.name))
-            .expect("(String, String) should be Serializedable")
-    }
 }
 
 impl Module{

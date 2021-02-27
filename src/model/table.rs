@@ -1,55 +1,20 @@
-use crate::{model::{Settable, Module}, redis_helper::redis_get_slice};
-use actix_web::web;
-use actix::Addr;
-use actix_redis::RedisActor;
+use crate::model::{Settable, Tree};
 use bs58::encode;
 use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use std::fmt::Debug;
-use serde_json::Value;
-use futures::future::join_all;
+
+// tables are really just tags...
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Table {
     pub hash: String,
     pub prev: String,
     pub table_name: String,
-    pub hashes: BTreeMap<String, String>, // module_name, id
+    pub hashes: Tree, // module_name, id
     pub timestamp: String,
-}
-
-impl Table {
-    pub async fn compile(&self, redis: &web::Data<Addr<RedisActor>>) -> BTreeMap<String, Value>{
-
-        let mut result: BTreeMap<String, Value> = BTreeMap::new();
-
-        let modules = self.hashes.iter().map(|(_k,v)|{
-            log::debug!("{}", &v);
-            redis_get_slice(v, "module", &redis)
-        });
-
-        // add self to result
-        let modules = join_all(modules).await;
-
-        for m in modules {
-            if let Some(x) = m {
-                let module: Module = serde_json::from_slice(&x)
-                    .expect("module should be Deserializable"); 
-                result.insert(module.name(), module.data());
-            }
-        }
-
-        let table_meta = serde_json::to_value(self).expect("table is deserializable");
-        result.insert("meta".to_string(), table_meta);
-
-        result
-    }
-
-    pub fn hash(&self) -> String{
-        root_hash(&self.table_name, &self.hashes)
-    }
 }
 
 impl Settable for Table {
@@ -58,19 +23,15 @@ impl Settable for Table {
     }
 
     fn id(&self) -> String {
-        self.hash.to_string()
+        self.hash
     }
 
-    fn list_item(&self) -> String {
-        serde_json::to_string(&vec![&self.hash, &self.table_name])
-            .expect("should be Serializable")
-    }
 }
 
 pub struct TempTable{
     prev: Option<String>,
     table_name: String,
-    hashes: BTreeMap<String, String>
+    hashes: Tree
 }
 
 impl TempTable{
@@ -90,7 +51,7 @@ impl TempTable{
     }
 
     pub fn root_hash(&self) -> String {
-        root_hash(&self.table_name, &self.hashes)
+        root_hash(&self.hashes)
     }
 }
 
@@ -115,11 +76,10 @@ impl From<TempTable> for Table{
     }
 }
 
-fn root_hash(table_name: &str, hashes: &BTreeMap<String, String>) -> String {
+fn root_hash(hashes: &BTreeMap<String, String>) -> String {
     let cat = hashes.iter()
             .map(|(k,v)|format!("{} {}",k,v))
             .collect::<Vec<String>>()
             .join(" ");
-        let cat = vec![table_name.to_string(), cat].join(" "); 
-        encode(Sha256::digest(cat.as_bytes())).into_string()
+    encode(Sha256::digest(cat.as_bytes())).into_string()
 }
