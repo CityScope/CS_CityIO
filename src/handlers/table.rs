@@ -133,7 +133,7 @@ pub async fn post(
     }
 
     // add things
-    let table: Table = Table::new(&commit.id(), &name);
+    let table: Table = Table::new(&name, &commit.id());
     let add_table = set_redis(table, &redis);
     let new_commit_id = commit.id();
     let add_commit = set_redis(commit, &redis);
