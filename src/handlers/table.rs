@@ -1,10 +1,11 @@
 use crate::model::{get_redis, set_redis, Hashes, Meta, Module, Table};
 use crate::redis_helper;
 use actix::prelude::*;
-use actix_redis::RedisActor;
+use actix_redis::{Command, RedisActor};
 use actix_web::{web, Error as AWError, HttpResponse};
 use futures::future::{join, join_all};
 use jct::{Blob, Commit, Settable, Tag};
+use redis_async::{resp::RespValue, resp_array};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::mem::swap;
@@ -15,6 +16,54 @@ pub async fn get_raw(
 ) -> Result<HttpResponse, AWError> {
     let name = name.into_inner();
     redis_helper::get(&redis, &name, "tag").await
+}
+
+pub async fn list(redis: web::Data<Addr<RedisActor>>) -> HttpResponse {
+    match redis_helper::get_list("tags", &redis).await {
+        None => HttpResponse::InternalServerError().finish(),
+        Some(list) => HttpResponse::Ok().json(list),
+    }
+}
+
+pub async fn delete(redis: web::Data<Addr<RedisActor>>, name: web::Path<String>) -> HttpResponse {
+    let name = name.into_inner();
+
+    match redis.send(Command(resp_array!["SREM", "tags", name])).await {
+        Ok(Ok(RespValue::Integer(x))) => {
+            if x == 1 {
+                HttpResponse::Ok().body("ok")
+            } else {
+                HttpResponse::Ok().body("no change")
+            }
+        }
+        _ => HttpResponse::InternalServerError().finish(),
+    }
+}
+
+pub async fn delete_module(
+    redis: web::Data<Addr<RedisActor>>,
+    path: web::Path<(String, String)>,
+) -> HttpResponse {
+    let (name, module_name) = path.into_inner();
+
+    let (_, mut commit, mut hashes) = match table_commit_hashes(&name, &redis).await {
+        None => return HttpResponse::NotFound().finish(),
+        Some(i) => i,
+    };
+
+    if let None = hashes.remove(&module_name) {
+        return HttpResponse::Ok().body("module not found, no change");
+    }
+
+    commit.update_tree(&hashes.id());
+
+    match update(hashes, commit, &name, &redis).await {
+        None => HttpResponse::InternalServerError().finish(),
+        Some(c_id) => {
+            let result = json!({"status":"ok", "commit_id":c_id});
+            HttpResponse::Ok().json(result)
+        }
+    }
 }
 
 pub async fn post_raw(
@@ -249,6 +298,31 @@ pub async fn deep_post(
     } else {
         log::debug!("failed updating");
         HttpResponse::InternalServerError().finish()
+    }
+}
+
+pub async fn branch(
+    path: web::Path<(String, String)>,
+    redis: web::Data<Addr<RedisActor>>,
+) -> HttpResponse {
+    let (table_name, new_table_name) = path.into_inner();
+
+    let table: Table = match get_redis(&table_name, "tag", &redis).await {
+        Some(t) => t,
+        None => return HttpResponse::NotFound().finish(),
+    };
+
+    let new_table = Table::new(&new_table_name, &table.commit);
+
+    match set_redis(new_table, &redis).await {
+        true => {
+            let result = json!(
+            {
+                "status":"ok", "table_name": &new_table_name, "commit_id": table.commit
+            });
+            HttpResponse::Ok().json(result)
+        }
+        false => HttpResponse::InternalServerError().finish(),
     }
 }
 

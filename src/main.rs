@@ -56,15 +56,6 @@ async fn main() -> std::io::Result<()> {
                 .route(web::post().to(module::post)) 
             )
 
-            // tree
-            // .service(
-            //     web::resource("/api/hashes/{id}/{blob}/{blob_id}")
-            //     .route(web::post().to(hashes::add_module)) 
-            // )
-            // .service(
-            //     web::resource("/api/hashes/{id}/blobs")
-            //     .route(web::post().to(hashes::add_module)) 
-            // )
             .service(
                 web::resource("/api/hashes/{id}/{blob_name}")
                 .route(web::delete().to(hashes::remove_module)) 
@@ -93,6 +84,11 @@ async fn main() -> std::io::Result<()> {
                 .route(web::post().to(commit::post)) 
             )
 
+            // tables
+            .service(web::resource("/api/tables/list")
+                .route(web::get().to(table::list))
+            )
+
             // table
             .service(web::resource("/api/table/raw/{table_name}")
                 .route(web::get().to(table::get_raw))
@@ -100,18 +96,21 @@ async fn main() -> std::io::Result<()> {
             .service(web::resource("/api/table/raw/{table_name}/{commit_id}")
                 .route(web::post().to(table::post_raw))
             )
+            .service(web::resource("/api/table/branch/{table_name}/{new_table_name}")
+               .route(web::post().to(table::branch))
+            )
             .service(web::resource("/api/table/{table_name}")
                 .route(web::get().to(table::get))
                 .route(web::post().to(table::post))
+                .route(web::delete().to(table::delete))
+            )
+            .service(web::resource("/api/table/{table_name}/{module_name}")
+                .route(web::delete().to(table::delete_module))
             )
             .service(web::resource("/api/table/{table_name}/{tail:.*}")
                .route(web::get().to(table::deep_get))
                .route(web::post().to(table::deep_post))
             )
-            
-            // .service(web::resource("/api/table/{table_name}")
-            //     .route(web::post().to(table::deep_post))
-            // )
             
             
     })

@@ -77,12 +77,11 @@ pub async fn get_slice(
 }
 
 pub async fn get_list(
-    domain: &str,
+    plural: &str,
     redis: &web::Data<Addr<RedisActor>>,
 ) -> Option<Vec<String>> {
-    let plural = format!("{}s", domain);
 
-    let set = redis.send(Command(resp_array!["SMEMBERS", &plural])).await;
+    let set = redis.send(Command(resp_array!["SMEMBERS", plural])).await;
 
     match set {
         Ok(Ok(Value::Array(x))) => {
