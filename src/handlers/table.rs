@@ -1,233 +1,49 @@
-use crate::{
-    model::{Module, Settable, Table, TempTable},
-    redis_helper::{redis_add, redis_get_slice},
-};
+use crate::model::{get_redis, set_redis, Hashes, Meta, Module, Table};
+use crate::redis_helper;
 use actix::prelude::*;
-use actix_redis::{Command, RedisActor};
+use actix_redis::RedisActor;
 use actix_web::{web, Error as AWError, HttpResponse};
 use futures::future::{join, join_all};
-use redis_async::{resp::RespValue, resp_array};
+use jct::{Blob, Commit, Settable, Tag};
 use serde_json::{json, Value};
-use serde::{Serialize, Deserialize};
 use std::collections::BTreeMap;
-use std::iter::FromIterator;
+use std::mem::swap;
 
-const BLACK_LIST_MODULE: [&str; 1] = ["meta"];
+pub async fn get_raw(
+    redis: web::Data<Addr<RedisActor>>,
+    name: web::Path<String>,
+) -> Result<HttpResponse, AWError> {
+    let name = name.into_inner();
+    redis_helper::get(&redis, &name, "tag").await
+}
+
+pub async fn post_raw(
+    redis: web::Data<Addr<RedisActor>>,
+    path: web::Path<(String, String)>,
+) -> Result<HttpResponse, AWError> {
+    let (name, commit_id) = path.into_inner();
+
+    let commit: Commit = match redis_helper::get_slice(&commit_id, "commit", &redis).await {
+        Some(s) => serde_json::from_slice(&s).expect("Commit has Deserialize"),
+        None => {
+            log::debug!("could not find commit:{}", &commit_id);
+            return Ok(HttpResponse::NotFound().finish());
+        }
+    };
+
+    let t = Tag::new(&name, &commit.id());
+    redis_helper::post(&redis, &t).await
+}
 
 pub async fn get(
     redis: web::Data<Addr<RedisActor>>,
-    table_name: web::Path<String>,
+    name: web::Path<String>,
 ) -> Result<HttpResponse, AWError> {
-    let get_hash = redis_get_slice(&table_name.into_inner(), "head", &redis).await;
+    let name = name.into_inner();
 
-    let id = match get_hash {
-        Some(h) => String::from_utf8(h).expect("this is base58 data"),
-        _ => {
-            return Ok(HttpResponse::NoContent().body("table name not in head"));
-        }
-    };
-
-    let get_table = redis_get_slice(&id, "table", &redis).await;
-
-    let table: Table = match get_table {
-        Some(v) => serde_json::from_slice(&v).expect("This should be Deserializable"),
-        None => return Ok(HttpResponse::NoContent().body("table id not found in db")),
-    };
-
-    let compiled = table.compile(&redis).await;
-
-    Ok(HttpResponse::Ok().json(compiled))
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct Tag(String, String);
-
-impl Settable for Tag {
-    fn domain_prefix() -> String {
-        "tag".to_string()
-    }
-
-    fn id(&self) -> String {
-        self.0.to_string()
-    }
-
-}
-
-impl Tag {
-    pub fn new(tag: &str, id: &str) -> Self {
-        Self(tag.to_string(), id.to_string())
-    }
-}
-
-pub async fn tag_table_id(
-    redis: web::Data<Addr<RedisActor>>,
-    path: web::Path<(String, String)>,
-) -> Result<HttpResponse, AWError> {
-    
-    let (tag_name, table_id) = path.into_inner();
-
-    let domain = format!("table:{}", table_id);
-
-    match redis.send(Command(resp_array!["EXISTS", &domain])).await? {
-        Ok(RespValue::Integer(x)) if x == 0 => {
-            return Ok(HttpResponse::NoContent()
-                .body("no table with id found"))
-        },
-        Ok(RespValue::Integer(x)) if x == 1 => {
-            () 
-        },
-        _=> {
-            return Ok(HttpResponse::InternalServerError().body("something went wrong on redis command EXIST"))
-        }
-    };
-
-    let tag = Tag::new(&tag_name, &table_id);
-    match redis_add(tag, &redis).await {
-        true => Ok(HttpResponse::Ok()
-            .json(json!({"status":"ok", "name":&tag_name, "id":&table_id})))
-        ,
-        false => Ok(HttpResponse::InternalServerError().body("error adding tag"))
-    }
-
-}
-
-pub async fn get_tag(
-    redis: web::Data<Addr<RedisActor>>,
-    tag: web::Path<String>,
-) -> Result<HttpResponse, AWError> {
-    
-    let tag= tag.into_inner();
-        
-    let id = redis_get_slice(&tag, "tag", &redis).await;
-
-    match id {
-        Some(x) => {
-            return Ok(HttpResponse::Ok().body(x))
-        },
-        None => {
-            return Ok(HttpResponse::NoContent().body("tag not found"))
-        }
-    }
-}
-
-pub async fn list_head(redis: web::Data<Addr<RedisActor>>) -> Result<HttpResponse, AWError> {
-    let list = redis
-        .send(Command(resp_array!["SMEMBERS", "heads"]))
-        .await?;
-
-    if let Ok(RespValue::Array(ids)) = list {
-        let mut list: Vec<String> = Vec::new();
-
-        // TODO: this can be filter + map
-        for id in ids {
-            if let RespValue::BulkString(v) = id {
-                let head = String::from_utf8(v).expect("table name should be utf8");
-                list.push(head);
-            }
-        }
-
-        Ok(HttpResponse::Ok().json(list))
-    } else {
-        Ok(HttpResponse::InternalServerError().finish())
-    }
-}
-
-pub async fn raw_get(
-    redis: web::Data<Addr<RedisActor>>,
-    table_id: web::Path<String>
-) -> Result<HttpResponse, AWError> {
-    let id = table_id.into_inner();
-    
-    let get: Option<Table> = redis_get_slice(&id, "table", &redis)
-        .await
-        .and_then(|slice| serde_json::from_slice(&slice).expect("data shoulde be Deserializable as Table"));
-
-    match get {
-        Some(table) => Ok(HttpResponse::Ok().json(table)),
-        None => Ok(HttpResponse::NoContent().body("table with id not found"))
-    }
-}
-
-pub async fn remove(
-    redis: web::Data<Addr<RedisActor>>,
-    table_name: web::Path<String>,
-) -> Result<HttpResponse, AWError> {
-
-    // this just deregisters from the head,
-    // elements of that table will remain.
-    let table_name = table_name.into_inner();
-    
-    let domain = format!("head:{}", &table_name);
-
-    let rm_heads = redis.send(Command(resp_array!["SREM", "heads", &table_name]));
-    let rm_head = redis.send(Command(resp_array!["DEL", &domain]));
-
-    let (head, _heads) = join(rm_head, rm_heads).await;
-
-    match head? {
-        Ok(RespValue::Integer(x)) => {
-            if x == 1 {
-                Ok(HttpResponse::Ok().json(json!({"status": "ok"})))
-            } else {
-                Ok(HttpResponse::Ok().json(json!({"status": "ok", "mes":"table wasn't found"})))
-            }
-        },
-        _ => Ok(HttpResponse::Ok().json(json!({"status": "error", "mes":"failed to delete table"})))
-    } 
-}
-
-pub async fn remove_module(
-    redis: web::Data<Addr<RedisActor>>,
-    path: web::Path<(String, String)>,
-) -> Result<HttpResponse, AWError> {
-    let (table_name, module_name) = path.into_inner();
-    // get the table
-    let table_id = redis_get_slice(&table_name, "head", &redis)
-        .await
-        .and_then(|slice| Some(String::from_utf8(slice).expect("this should be convertable to a string")));
-    
-    if table_id.is_none() {
-        log::debug!("could not find table_id");
-        return Ok(HttpResponse::NoContent().body("cannot find table_id"))
-    }
-
-    let mut table = match redis_get_slice(&table_id.unwrap(), "table", &redis)
-        .await
-        .and_then(|slice|{
-            let t:Table = serde_json::from_slice(&slice).expect("Table should be Deserializable");
-            Some(t)
-        }) {
-        Some(t) => t,
-        None => {
-            log::debug!("could not find table");
-            return Ok(HttpResponse::NoContent().body("could not find table"))
-        }
-    };
-
-    // remove from hashes
-    match table.hashes.remove(&module_name){
-        Some(_m) => {
-            let prev_hash = &table.hash.to_string();
-            let new_hash = table.hash();
-            table.hash = new_hash.to_string();
-            table.prev = prev_hash.to_string();
-            let update = redis_add(table, &redis);
-            let domain = format!("head:{}", &table_name);
-            let head = redis.send(Command(resp_array!["SET", &domain, &new_hash]));
-            let (update, _head) = join(update, head).await;
-            match update {
-                true => {
-                    let result = json!({"status":"ok", "id": &new_hash});
-                    return Ok(HttpResponse::Ok().json(result))
-                },
-                false => {
-                    return Ok(HttpResponse::InternalServerError().body("failed to update head"))
-                }
-            }
-        },
-        None => {
-            return Ok(HttpResponse::Ok().body("module wasn't found, no change"))
-        }
+    match unroll_table(&name, &redis).await {
+        None => Ok(HttpResponse::NotFound().finish()),
+        Some(t) => Ok(HttpResponse::Ok().json(t)),
     }
 }
 
@@ -237,26 +53,13 @@ pub async fn deep_get(
 ) -> Result<HttpResponse, AWError> {
     let (table_name, tail) = path.into_inner();
 
-    // get table id
-    let get_id = redis_get_slice(&table_name, "head", &redis).await;
-
-    let table_id = match get_id {
-        Some(v) => String::from_utf8(v).expect("table_id is base58"),
-        _ => {
-            return Ok(HttpResponse::NoContent().body("table name not found in heads"));
-        }
-    };
-
-    let get_table = redis_get_slice(&table_id, "table", &redis).await;
-
-    let table: Table = match get_table {
-        Some(v) => serde_json::from_slice(&v).expect("table should be Deserializable"),
+    let table_data = match unroll_table(&table_name, &redis).await {
+        Some(t) => t,
         None => {
-            return Ok(HttpResponse::NoContent().body("table id not found in db"));
+            log::debug!("could not unroll table.");
+            return Ok(HttpResponse::NotFound().finish());
         }
     };
-
-    let table_data = table.compile(&redis).await;
 
     let dirs: Vec<String> = tail
         .split("/")
@@ -272,233 +75,286 @@ pub async fn deep_get(
     for d in dirs {
         value = match value.get(d) {
             Some(v) => v.to_owned(),
-            None => return Ok(HttpResponse::NoContent().body("data not found")),
+            None => return Ok(HttpResponse::NotFound().finish()),
         }
     }
 
     Ok(HttpResponse::Ok().json(value))
 }
 
+pub async fn post(
+    redis: web::Data<Addr<RedisActor>>,
+    name: web::Path<String>,
+    data: web::Json<BTreeMap<String, Value>>,
+) -> HttpResponse {
+    let name = name.into_inner();
+
+    let mut data: BTreeMap<String, Blob> = data
+        .into_inner()
+        .iter()
+        .filter(|(name, _v)| name != &"meta")
+        .map(|(name, value)| (name.to_string(), value.to_owned()))
+        .collect();
+
+    let new_hashes: Hashes = data
+        .iter()
+        .map(|(name, blob)| (name.to_string(), blob.id()))
+        .collect();
+
+    let mut merged_hashes: Hashes = Hashes::new();
+
+    let previous = table_commit_hashes(&name, &redis).await;
+
+    let commit: Commit;
+
+    if previous.is_some() {
+        let (_, p_commit, p_hashes) = previous.unwrap();
+
+        merged_hashes = p_hashes.to_owned();
+
+        for (name, hash) in new_hashes {
+            merged_hashes.insert(name, hash);
+        }
+
+        if merged_hashes.id() == p_hashes.id() {
+            return HttpResponse::Ok().body("no change");
+        }
+
+        commit = Commit::new(&merged_hashes.id(), &Some(&p_commit.id()));
+
+        data = data
+            .iter()
+            .filter(|(_name, blob)| p_hashes.values().any(|ph| ph != &blob.id()))
+            .map(|(name, blob)| (name.to_owned(), blob.to_owned()))
+            .collect();
+    } else {
+        merged_hashes = new_hashes;
+        commit = Commit::new(&merged_hashes.id(), &None);
+    }
+
+    // add things
+    let table: Table = Table::new(&commit.id(), &name);
+    let add_table = set_redis(table, &redis);
+    let new_commit_id = commit.id();
+    let add_commit = set_redis(commit, &redis);
+    let add_hashes = set_redis(merged_hashes, &redis);
+    let add_blobs = data
+        .values()
+        .map(|value| set_redis(value.to_owned(), &redis));
+
+    let ((table, commit), (hashes, blobs)) = join(
+        join(add_table, add_commit),
+        join(add_hashes, join_all(add_blobs)),
+    )
+    .await;
+
+    if !table || !commit || !hashes || !blobs.iter().any(|b| *b) {
+        HttpResponse::InternalServerError().finish()
+    } else {
+        let result = json!({"status":"ok", "id":new_commit_id, "name": name});
+        HttpResponse::Ok().json(result)
+    }
+}
+
 pub async fn deep_post(
     redis: web::Data<Addr<RedisActor>>,
     path: web::Path<(String, String)>,
     data: web::Json<Value>,
-) -> Result<HttpResponse, AWError> {
+) -> HttpResponse {
     let (table_name, tail) = path.into_inner();
+    let mut data = data.into_inner();
 
-    // get table id
-    let get_id = redis_get_slice(&table_name, "head", &redis).await;
-
-    let table_id = match get_id {
-        Some(v) => String::from_utf8(v).expect("table_id is base58"),
-        _ => {
-            return Ok(HttpResponse::NoContent().body("table name not found in heads"));
-        }
+    let (_, mut commit, mut hashes) = match table_commit_hashes(&table_name, &redis).await {
+        None => return HttpResponse::NotFound().finish(),
+        Some((t, c, h)) => (t, c, h),
     };
 
-    let get_table = redis_get_slice(&table_id, "table", &redis).await;
-
-    let mut table: Table = match get_table {
-        Some(v) => serde_json::from_slice(&v).expect("table should be Deserializable"),
-        None => {
-            return Ok(HttpResponse::NoContent().body("table id not found in db"));
-        }
-    };
-
-    let mut dirs = tail.split("/").filter(|s| s != &"").map(|s| s.to_string());
-
-    let module_name = match dirs.next() {
-        Some(x) => x.to_string(),
-        None => {
-            return Ok(HttpResponse::NoContent().body("use normal table post endpoint"));
-        }
-    };
-
-    let module_id = match table.hashes.get(&module_name) {
-        None => {
-            // TODO implement adding new module
-            return Ok(HttpResponse::Ok().body("we will add this new module"));
-        } // add this module},
-        Some(v) => v,
-    };
-
-    let mut module: Module = redis_get_slice(&module_id, "module", &redis)
-        .await
-        .and_then(|s| serde_json::from_slice(&s).expect("Module should be Deserializable"))
-        .unwrap();
-
-    let mut mod_data = &mut module.data;
-    let path: Vec<String> = dirs.map(|p| p.to_string()).collect();
-
-    for p in path {
-        mod_data = match mod_data.get_mut(p) {
-            Some(v) => v,
-            None => return Ok(HttpResponse::NoContent().body("object not found at this level.")),
-        };
-    }
-
-    let mut new_data = data.into_inner();
-    std::mem::swap(mod_data, &mut new_data);
-
-    // recalculate the hash for this module
-    let new_mod_id = module.id();
-    
-    if &new_mod_id == module_id {
-        let json = serde_json::json!({
-            "status":"ok",
-            "id": table_id,
-            "mes": "no change on table"
-        });
-        return Ok(HttpResponse::Ok().json(json));
-    }
-
-    let table_prev_hash = &table.hash;
-    table.hashes.insert(module.name(), new_mod_id);
-    let table_new_hash = table.hash();
-    table.prev = table_prev_hash.to_string();
-    table.hash = table_new_hash.to_string();
-
-    let mod_add = redis_add(module, &redis);
-    // add the table
-    let table_add = redis_add(table, &redis);
-    // change the head
-    let head_domain = format!("head:{}", &table_name);
-    let change_head = redis.send(Command(resp_array!["SET", &head_domain, &table_new_hash]));
-
-    let (m, (_t, _h)) = join(mod_add, join(table_add, change_head)).await;
-
-    match m {
-        true => Ok(HttpResponse::Ok().json(serde_json::json!({
-            "status":"ok",
-            "id": table_new_hash
-        }))),
-        false => Ok(HttpResponse::InternalServerError().json("could not add new data")),
-    }
-}
-
-pub async fn post(
-    redis: web::Data<Addr<RedisActor>>,
-    table_name: web::Path<String>,
-    table: web::Json<Value>,
-) -> Result<HttpResponse, AWError> {
-    // partial data needs to be an JSON object
-    let table_data = table.into_inner();
-    let table_name = table_name.into_inner();
-
-    let mut prev_table: Option<Table> = None;
-    // check if we have the previous table
-    let get_head_id = redis_get_slice(&table_name, "head", &redis)
-        .await
-        .and_then(|s| Some(String::from_utf8(s).expect("should be base58")));
-
-    if let Some(v) = get_head_id {
-        prev_table = redis_get_slice(&v, "table", &redis).await.and_then(|s| {
-            let table: Table = serde_json::from_slice(&s).expect("Should be Serializable");
-            Some(table)
-        })
-    }
-
-    // we can assume that the modules are all in the database at this point for the previous table
-
-    let data: BTreeMap<String, Value> = match table_data {
-        Value::Object(v) => {
-            BTreeMap::from_iter(v.iter().map(|(k, v)| (k.to_string(), v.to_owned())))
-        }
-        _ => {
-            return Ok(HttpResponse::NotAcceptable().body("json payload needs to be a JSON object"));
-        }
-    };
-
-    let modules: Vec<Module> = data
-        .iter()
-        .filter(|(k, _v)| !BLACK_LIST_MODULE.iter().any(|b| b == k))
-        .map(|(k, v)| Module::new(k, v))
+    let mut dirs: Vec<String> = tail
+        .split("/")
+        .filter(|s| s != &"")
+        .map(|s| s.to_string())
         .collect();
 
-    let module_hashes: BTreeMap<String, String> =
-        modules.iter().map(|m| (m.name(), m.id())).collect();
+    let mut dirs_iter = dirs.iter();
 
-    // get only new hashes, if this is empty we are happy to return as-is.
-    // note that the previous table may have more modules.
-    // this post function is more like git add that doesn't take account removes
-    let mut new_modules: Vec<String>;
-    let mut new_module_names: Vec<String>;
-
-    match prev_table.as_ref() {
-        None => {
-            new_modules = module_hashes.values().map(|id| id.to_string()).collect();
-            new_module_names = module_hashes.keys().map(|name| name.to_string()).collect();
-        }
-        Some(v) => {
-            new_modules = module_hashes
-                .values()
-                .filter(|nh| !v.hashes.values().any(|ph| &ph == nh))
-                .map(|id| id.to_string())
-                .collect();
-            new_module_names = module_hashes
-                .keys()
-                .filter(|nh| !v.hashes.keys().any(|ph| &ph == nh))
-                .map(|id| id.to_string())
-                .collect();
-        }
-    }
-
-    if (new_modules.is_empty()) && (new_module_names.is_empty()) {
-        // we know that there was an previous table
-        let prev_id = prev_table.unwrap().hash.to_string();
-        return Ok(HttpResponse::Ok().json(serde_json::json!({
-            "id": prev_id,
-            "name": &table_name,
-            "status": "ok",
-            "mes": "status up to date, nothing to add"
-        })));
-    }
-
-    let mut union_hash = match prev_table.as_ref() {
-        Some(t) => t.hashes.to_owned(),
-        None => BTreeMap::new(),
+    let module_name = match dirs_iter.next() {
+        Some(t) => t.to_owned(),
+        None => return HttpResponse::NotAcceptable().finish(),
     };
 
-    for (k, v) in &module_hashes {
-        union_hash.insert(k.to_string(), v.to_string());
+    if module_name == "meta" {
+        log::debug!("meta is reserved module name, not allowed");
+        return HttpResponse::NotAcceptable().finish();
     }
 
-    let mod_add = modules
-        .iter()
-        .filter(|m| new_modules.iter().any(|id| id == &m.id())) // just add what is needed
-        .map(|m| redis_add(m.to_owned(), &redis));
+    dirs = dirs_iter.map(|d| d.to_string()).collect();
 
-    let prev_id = prev_table.as_ref().and_then(|pt| Some(pt.hash.to_string()));
+    let module_id = match hashes.get(&module_name) {
+        Some(v) => v,
+        None => {
+            let module = data;
 
-    let table: Table = TempTable::new(prev_id, union_hash, table_name.to_string()).into();
-    let hash: String = table.hash.to_string();
-    let name: String = table.table_name.to_string();
+            hashes.insert(module_name, module.id());
+            commit.update_tree(&hashes.id());
 
-    let head = redis.send(Command(resp_array![
-        "SET",
-        format!("head:{}", &table.table_name),
-        &table.id()
-    ]));
+            let add_module = set_redis(module, &redis);
+            let update = update(hashes, commit, &table_name, &redis);
 
-    let heads_list = redis.send(Command(resp_array!["SADD", "heads", &table_name]));
-    let add = redis_add(table, &redis);
-    let (add, _head) = join(add, join(join_all(mod_add), join(head, heads_list))).await;
+            let (_mod, update) = join(add_module, update).await;
 
-    match add {
-        true => Ok(HttpResponse::Ok().json(serde_json::json!(
-        {
-            "id":hash,
-            "name":name,
-            "status":"ok"
-        }))),
-        false => Ok(HttpResponse::InternalServerError().body("could not add table to database")),
+            if let Some(v) = update {
+                let result = json!({"status":"ok", "id": v});
+                return HttpResponse::Ok().json(result);
+            } else {
+                return HttpResponse::Ok().body("will add module");
+            }
+        }
+    };
+
+    let mut module: Module = match get_redis(&module_id, "blob", &redis).await {
+        Some(v) => v,
+        None => return HttpResponse::NotFound().finish(),
+    };
+
+    let mut partial = &mut module;
+
+    for dir in dirs {
+        partial = match partial.get_mut(dir) {
+            Some(v) => v,
+            None => return HttpResponse::NotFound().finish(),
+        }
+    }
+
+    swap(partial, &mut data);
+
+    if &module.id() == module_id {
+        let json = serde_json::json!({
+            "status":"ok",
+            "mes": "no change on table"
+        });
+        return HttpResponse::Ok().json(json);
+    }
+
+    hashes.insert(module_name, module.id());
+    commit.update_tree(&hashes.id());
+
+    let add_module = set_redis(module, &redis);
+    let commit_id = update(hashes, commit, &table_name, &redis);
+
+    let (_add_module, add_others) = join(add_module, commit_id).await;
+
+    if let Some(id) = add_others {
+        let result = json!({"status":"ok", "commit":id});
+        HttpResponse::Ok().json(result)
+    } else {
+        log::debug!("failed updating");
+        HttpResponse::InternalServerError().finish()
     }
 }
 
-// pub async fn deep_post(
-//     redis: web::Data<Addr<RedisActor>>,
-//     table_name: web::Path<String>,
-//     table: web::Json<Module>,
-// ) -> Result<HttpResponse, AWError> {
-//     Ok(HttpResponse::Ok().body("ok"))
-// }
+async fn update(
+    hashes: Hashes,
+    commit: Commit,
+    table_name: &str,
+    redis: &web::Data<Addr<RedisActor>>,
+) -> Option<String> {
+    let c_id = commit.id();
+    let add_hashes = set_redis(hashes, redis);
+    let add_commit = set_redis(commit, redis);
+    let table: Table = Table::new(table_name, &c_id);
+    let add_table = set_redis(table, redis);
+
+    let (did_hash, (did_commit, did_table)) = join(add_hashes, join(add_commit, add_table)).await;
+
+    if did_hash && did_commit && did_table {
+        return Some(c_id.to_string());
+    } else {
+        return None;
+    }
+}
+
+fn to_hashes(data: BTreeMap<String, Value>) -> Hashes {
+    data.iter()
+        .map(|(v, b)| {
+            let blob: Blob = b.to_owned();
+            (v.to_string(), blob.id())
+        })
+        .collect()
+}
+
+async fn table_commit_hashes(
+    table_name: &str,
+    redis: &web::Data<Addr<RedisActor>>,
+) -> Option<(Table, Commit, Hashes)> {
+    let table: Table = match get_redis(&table_name, "tag", &redis).await {
+        None => return None,
+        Some(t) => t,
+    };
+
+    let commit: Commit = match get_redis(&table.commit, "commit", &redis).await {
+        None => return None,
+        Some(t) => t,
+    };
+
+    match get_redis(&commit.tree(), "tree", &redis).await {
+        None => None,
+        Some(t) => Some((table, commit, t)),
+    }
+}
+
+async fn unroll_table(
+    table_name: &str,
+    redis: &web::Data<Addr<RedisActor>>,
+) -> Option<BTreeMap<String, Value>> {
+    let table: Table = match get_redis(&table_name, "tag", &redis).await {
+        Some(t) => t,
+        None => {
+            log::debug!("table name ({}) was not found", &table_name);
+            return None;
+        }
+    };
+
+    let commit: Commit = match get_redis(&table.commit, "commit", &redis).await {
+        Some(t) => t,
+        None => {
+            log::debug!("commit ({}) was not found", &table.commit);
+            return None;
+        }
+    };
+
+    let hashes: Hashes = match get_redis(&commit.tree(), "tree", &redis).await {
+        Some(t) => t,
+        None => {
+            log::debug!("tree ({}) was not found", &commit.tree());
+            return None;
+        }
+    };
+
+    let blobs: Vec<Option<Blob>> =
+        join_all(hashes.values().map(|id| get_redis(id, "blob", &redis))).await;
+
+    if blobs.iter().any(|b| b.is_none()) {
+        log::debug!("blob not found");
+        return None;
+    }
+
+    let blobs: Vec<Blob> = blobs
+        .iter()
+        .map(|b| b.as_ref().unwrap().to_owned())
+        .collect();
+
+    let meta = Meta::new(&table.commit, &commit.tree(), &hashes, &commit.timestamp());
+
+    let mut result: BTreeMap<String, Value> = BTreeMap::new();
+
+    for (i, (name, _id)) in hashes.iter().enumerate() {
+        result.insert(name.to_string(), blobs[i].to_owned());
+    }
+
+    result.insert(
+        "meta".to_string(),
+        serde_json::to_value(meta).expect("meta can be Value"),
+    );
+
+    Some(result)
+}

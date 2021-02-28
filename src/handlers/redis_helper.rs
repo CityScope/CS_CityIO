@@ -1,9 +1,9 @@
-use crate::model::Settable;
+use jct::Settable;
 use actix::Addr;
-use actix_redis::{Command, RedisActor};
+use actix_redis::{Command, RedisActor, RespValue as Value};
 use actix_web::{web, Error as AWError, HttpResponse};
 use futures::future::{join, join_all};
-use redis_async::{resp::RespValue as Value, resp_array};
+use redis_async::resp_array;
 use serde_json::json;
 
 pub async fn get(

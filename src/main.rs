@@ -1,6 +1,5 @@
 mod handlers;
 mod model;
-mod redis_helper;
 
 use actix_cors::Cors;
 use actix_redis::RedisActor;
@@ -35,16 +34,85 @@ async fn main() -> std::io::Result<()> {
             .data(redis_addr)
             .wrap(middleware::Logger::default())
             .wrap(cors)
-            // modules
             .service(
-                web::resource("/api/module/{module_id}")
-                .route(web::get().to(module::get)) 
-                .route(web::post().to(module::post)), 
+                web::resource("/api/dump")
+                .route(web::get().to(dump))
             )
-            // Blob
             .service(
+                web::resource("/api/restore")
+                .route(web::post().to(restore))
+            )
+            .service(
+                web::resource("/api/nuclear")
+                .route(web::delete().to(nuclear))
+            )
 
+            .service(
+                web::resource("/api/module/{id}")
+                .route(web::get().to(module::get)) 
             )
+            .service(
+                web::resource("/api/module")
+                .route(web::post().to(module::post)) 
+            )
+
+            // tree
+            // .service(
+            //     web::resource("/api/hashes/{id}/{blob}/{blob_id}")
+            //     .route(web::post().to(hashes::add_module)) 
+            // )
+            // .service(
+            //     web::resource("/api/hashes/{id}/blobs")
+            //     .route(web::post().to(hashes::add_module)) 
+            // )
+            .service(
+                web::resource("/api/hashes/{id}/{blob_name}")
+                .route(web::delete().to(hashes::remove_module)) 
+            )
+            
+            .service(
+                web::resource("/api/hashes/{id}")
+                .route(web::get().to(hashes::get)) 
+            )
+            .service(
+                web::resource("/api/hashes")
+                .route(web::post().to(hashes::post)) 
+            )
+
+            // commit
+            .service(
+                web::resource("/api/commit/{id}/{tree_id}")
+                .route(web::post().to(commit::update_tree)) 
+            )
+            .service(
+                web::resource("/api/commit/{id}")
+                .route(web::get().to(commit::get)) 
+            )
+            .service(
+                web::resource("/api/commit")
+                .route(web::post().to(commit::post)) 
+            )
+
+            // table
+            .service(web::resource("/api/table/raw/{table_name}")
+                .route(web::get().to(table::get_raw))
+            )
+            .service(web::resource("/api/table/raw/{table_name}/{commit_id}")
+                .route(web::post().to(table::post_raw))
+            )
+            .service(web::resource("/api/table/{table_name}")
+                .route(web::get().to(table::get))
+            )
+            .service(web::resource("/api/table/{table_name}")
+                .route(web::post().to(table::post))
+            )
+            .service(web::resource("/api/table/{table_name}/{tail:.*}")
+               .route(web::get().to(table::deep_get))
+            )
+            // .service(web::resource("/api/table/{table_name}")
+            //     .route(web::post().to(table::deep_post))
+            // )
+            
             
     })
     .bind("0.0.0.0:8080")?
