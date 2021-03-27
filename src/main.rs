@@ -35,76 +35,76 @@ async fn main() -> std::io::Result<()> {
             .wrap(middleware::Logger::default())
             .wrap(cors)
             .service(
-                web::resource("/api/dump")
+                web::resource("/api/dump/")
                 .route(web::get().to(dump))
             )
             .service(
-                web::resource("/api/restore")
+                web::resource("/api/restore/")
                 .route(web::post().to(restore))
             )
             .service(
-                web::resource("/api/nuclear")
+                web::resource("/api/nuclear/")
                 .route(web::delete().to(nuclear))
             )
 
             .service(
-                web::resource("/api/module/{id}")
+                web::resource("/api/module/{id}/")
                 .route(web::get().to(module::get)) 
             )
             .service(
-                web::resource("/api/module")
+                web::resource("/api/module/")
                 .route(web::post().to(module::post)) 
             )
 
             .service(
-                web::resource("/api/hashes/{id}/{blob_name}")
+                web::resource("/api/hashes/{id}/{blob_name}/")
                 .route(web::delete().to(hashes::remove_module)) 
             )
             
             .service(
-                web::resource("/api/hashes/{id}")
+                web::resource("/api/hashes/{id}/")
                 .route(web::get().to(hashes::get)) 
             )
             .service(
-                web::resource("/api/hashes")
+                web::resource("/api/hashes/")
                 .route(web::post().to(hashes::post)) 
             )
 
             // commit
             .service(
-                web::resource("/api/commit/{id}/{tree_id}")
+                web::resource("/api/commit/{id}/{tree_id}/")
                 .route(web::post().to(commit::update_tree)) 
             )
             .service(
-                web::resource("/api/commit/{id}")
+                web::resource("/api/commit/{id}/")
                 .route(web::get().to(commit::get)) 
             )
             .service(
-                web::resource("/api/commit")
+                web::resource("/api/commit/")
                 .route(web::post().to(commit::post)) 
             )
 
             // tables
-            .service(web::resource("/api/tables/list")
+            .service(web::resource("/api/tables/list/")
                 .route(web::get().to(table::list))
             )
 
             // table
-            .service(web::resource("/api/table/raw/{table_name}")
+            .service(web::resource("/api/table/raw/{table_name}/")
                 .route(web::get().to(table::get_raw))
             )
-            .service(web::resource("/api/table/raw/{table_name}/{commit_id}")
+            .service(web::resource("/api/table/raw/{table_name}/{commit_id}/")
                 .route(web::post().to(table::post_raw))
             )
-            .service(web::resource("/api/table/branch/{table_name}/{new_table_name}")
+            .service(web::resource("/api/table/branch/{table_name}/{new_table_name}/")
                .route(web::post().to(table::branch))
             )
-            .service(web::resource("/api/table/{table_name}")
+            .service(web::resource("/api/table/{table_name}/")
                 .route(web::get().to(table::get))
                 .route(web::post().to(table::post))
                 .route(web::delete().to(table::delete))
             )
-            .service(web::resource("/api/table/{table_name}/{module_name}")
+            .service(web::resource("/api/table/{table_name}/{module_name}/")
                 .route(web::delete().to(table::delete_module))
             )
             .service(web::resource("/api/table/{table_name}/{tail:.*}")
