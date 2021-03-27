@@ -14,7 +14,7 @@ async fn main() -> std::io::Result<()> {
     dotenv::dotenv().ok();
     std::env::set_var(
         "RUST_LOG",
-        "actix_web=trace,actix_redis=trace,cityio=trace",
+        "actix_web=trace,actix_redis=trace,cityio=debug",
     );
     env_logger::init();
 

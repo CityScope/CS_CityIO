@@ -58,7 +58,5 @@ pub async fn update_tree(
             Ok(HttpResponse::Ok().json(result))
        }
     }
-    
-
 }
 
