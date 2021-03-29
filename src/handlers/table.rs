@@ -301,31 +301,6 @@ pub async fn deep_post(
     }
 }
 
-pub async fn branch(
-    path: web::Path<(String, String)>,
-    redis: web::Data<Addr<RedisActor>>,
-) -> HttpResponse {
-    let (table_name, new_table_name) = path.into_inner();
-
-    let table: Table = match get_redis(&table_name, "tag", &redis).await {
-        Some(t) => t,
-        None => return HttpResponse::NotFound().finish(),
-    };
-
-    let new_table = Table::new(&new_table_name, &table.commit);
-
-    match set_redis(new_table, &redis).await {
-        true => {
-            let result = json!(
-            {
-                "status":"ok", "table_name": &new_table_name, "commit_id": table.commit
-            });
-            HttpResponse::Ok().json(result)
-        }
-        false => HttpResponse::InternalServerError().finish(),
-    }
-}
-
 async fn update(
     hashes: Hashes,
     commit: Commit,
