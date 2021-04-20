@@ -32,6 +32,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::JsonConfig::default().limit(1024 * 1024 * 4))
             .wrap(middleware::Logger::default())
             .wrap(cors)
+            .service(index)
             .service(web::resource("/api/dump/").route(web::get().to(dump)))
             .service(web::resource("/api/restore/").route(web::post().to(restore)))
             .service(web::resource("/api/nuclear/").route(web::delete().to(nuclear)))
@@ -80,3 +81,5 @@ async fn main() -> std::io::Result<()> {
     .run()
     .await
 }
+
+

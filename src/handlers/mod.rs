@@ -8,12 +8,22 @@ use jct::{Blob, Commit, Tag, Tree};
 
 use actix::Addr;
 use actix_redis::{Command, RedisActor};
-use actix_web::{web, Error as AWError, HttpResponse};
+use actix_web::{web, Error as AWError, HttpResponse, http::StatusCode, http::header, get};
 use futures::future::{join, join_all};
 use redis_async::{resp::RespValue, resp_array};
 use serde_json::Value;
 use serde::Deserialize;
 use std::collections::BTreeMap;
+
+
+const CITY_SCOPE_URL: &str = "https://cityscope.media.mit.edu/CS_cityscopeJS/#/cityioviewer";
+
+#[get("/")]
+pub async fn index() -> HttpResponse {
+    HttpResponse::build(StatusCode::MOVED_PERMANENTLY)
+        .header(header::LOCATION, CITY_SCOPE_URL)
+        .finish()
+}
 
 pub async fn dump(redis: web::Data<Addr<RedisActor>>) -> Result<HttpResponse, AWError> {
     let mut dump: BTreeMap<String, Vec<Value>> = BTreeMap::new();
