@@ -28,7 +28,14 @@ pub async fn list(redis: web::Data<Addr<RedisActor>>) -> HttpResponse {
 pub async fn delete(redis: web::Data<Addr<RedisActor>>, name: web::Path<String>) -> HttpResponse {
     let name = name.into_inner();
 
-    match redis.send(Command(resp_array!["SREM", "tags", name])).await {
+    let tag_domain = format!("tag:{}", name);
+
+    let delete_tag = redis.send(Command(resp_array!["DEL", &tag_domain]));
+    let remove_from_tags = redis.send(Command(resp_array!["SREM", "tags", name]));
+
+    let (del, _rm) = join(delete_tag, remove_from_tags).await;
+
+    match del {
         Ok(Ok(RespValue::Integer(x))) => {
             if x == 1 {
                 HttpResponse::Ok().body("ok")

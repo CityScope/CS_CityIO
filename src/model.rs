@@ -5,7 +5,7 @@ use actix_web::web;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-use jct::{Blob, Commit, Settable, Tag, Tree};
+use jct::{Blob, Settable, Tag, Tree};
 
 pub type Module = Blob;
 pub type Hashes = Tree;
