@@ -29,7 +29,7 @@ async fn main() -> std::io::Result<()> {
 
         App::new()
             .data(redis_addr)
-            .app_data(web::JsonConfig::default().limit(1024 * 1024 * 4))
+            .app_data(web::JsonConfig::default().limit(1024 * 1024 * 10)) // 10mb.... really?
             .wrap(middleware::Logger::default())
             .wrap(cors)
             .service(index)
