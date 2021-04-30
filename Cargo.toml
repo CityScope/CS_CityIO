@@ -1,6 +1,6 @@
 [package]
 name = "cityio"
-version = "3.0.1"
+version = "3.1.0"
 authors = ["Yasushi Sakai <yasushisakai+git@pm.me>"]
 edition = "2018"
 
