@@ -308,6 +308,99 @@ pub async fn deep_post(
     }
 }
 
+pub async fn deep_delete(
+    redis: web::Data<Addr<RedisActor>>,
+    path: web::Path<(String, String)>,
+) -> Result<HttpResponse, AWError> {
+
+    let (table_name, tail) = path.into_inner();
+
+    let (_, mut commit, mut hashes) = match table_commit_hashes(&table_name, &redis).await {
+        None => return Ok(HttpResponse::NotFound().finish()),
+        Some((t, c, h)) => (t, c, h),
+    };
+
+    let mut dirs: Vec<String> = tail
+        .split("/")
+        .filter(|s| s != &"")
+        .map(|s| s.to_string())
+        .collect();
+
+    let mut dirs_iter = dirs.iter();
+
+    let module_name = match dirs_iter.next() {
+        Some(t) => t.to_owned(),
+        None => return Ok(HttpResponse::NotAcceptable().finish()),
+    };
+
+    if module_name == "meta" {
+        log::debug!("meta is reserved module name, not allowed");
+        return Ok(HttpResponse::NotAcceptable().finish());
+    }
+
+    dirs = dirs_iter.map(|d| d.to_string()).collect();
+
+    if dirs.len() == 0 {
+        // wants to delete the module
+        match hashes.remove(&module_name) {
+            Some(_v) => {
+                () 
+            },
+            None => {
+                return Ok(HttpResponse::Ok().json(json!({"status":"ok", "mes":"module not found, state did not change."})))  
+            }
+        }
+    } else {
+        // deeper
+    let module_id = match hashes.get(&module_name) {
+        Some(v) => v,
+        None => {
+            return Ok(HttpResponse::Ok().json(json!({"status":"ok", "mes":"did not find module name, table state did not change."})))  
+        }
+    };
+
+    let mut module: Module = match get_redis(&module_id, "blob", &redis).await {
+        Some(v) => v,
+        None => return Ok(HttpResponse::NotFound().finish()),
+    };
+
+    let mut partial = &mut module;
+
+    for dir in dirs {
+        partial = match partial.get_mut(dir) {
+            Some(v) => v,
+            None => return Ok(HttpResponse::NotFound().finish()),
+        }
+    }
+
+    swap(partial, &mut Value::Null);
+
+    if &module.id() == module_id {
+        let json = serde_json::json!({
+            "status":"ok",
+            "mes": "no change on table"
+        });
+        return Ok(HttpResponse::Ok().json(json));
+    }
+
+    hashes.insert(module_name, module.id());
+    let _add_module = set_redis(module, &redis).await;
+    }
+
+    commit.update_tree(&hashes.id());
+    let commit_id = update(hashes, commit, &table_name, &redis).await;
+
+    if let Some(id) = commit_id {
+        let result = json!({"status":"ok", "commit":id});
+        Ok(HttpResponse::Ok().json(result))
+    } else {
+        log::debug!("failed updating");
+        Ok(HttpResponse::InternalServerError().finish())
+    }
+
+}
+
+
 async fn update(
     hashes: Hashes,
     commit: Commit,

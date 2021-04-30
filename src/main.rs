@@ -74,7 +74,8 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::resource("/api/table/{table_name}/{tail:.*}")
                     .route(web::get().to(table::deep_get))
-                    .route(web::post().to(table::deep_post)),
+                    .route(web::post().to(table::deep_post))
+                    .route(web::delete().to(table::deep_delete)),
             )
     })
     .bind("0.0.0.0:8080")?
