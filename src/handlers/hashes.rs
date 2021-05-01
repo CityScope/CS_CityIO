@@ -1,32 +1,40 @@
-use crate::redis_helper;
+use crate::json_error;
 use crate::model::Hashes;
-use jct::{Settable, Tree, Assign};
+use crate::redis_helper;
 use actix::prelude::*;
 use actix_redis::{Command, RedisActor};
-use actix_web::{web, Error as AWError, HttpResponse};
+use actix_web::{Error as AWError, Responder, delete, get, http::StatusCode, post, web};
 use futures::future::join_all;
+use jct::{Assign, Settable, Tree};
 use redis_async::{resp::RespValue, resp_array};
-use serde_json::json;
+use serde_json::{json, Value};
 
-pub async fn get(
-    redis: web::Data<Addr<RedisActor>>,
-    id: web::Path<String>,
-) -> Result<HttpResponse, AWError> {
+#[get("api/hashes/{id}/")]
+pub async fn get(redis: web::Data<Addr<RedisActor>>, id: web::Path<String>) -> impl Responder {
     let id = id.into_inner();
-    redis_helper::get(&redis, &id, "tree").await
+    match redis_helper::get_slice(&id, "tree", &redis).await {
+        Some(v) => {
+            let r: Value = serde_json::from_slice(&v).unwrap();  
+            web::Json(r).with_status(StatusCode::OK)
+        },
+        None => {
+            json_error("hashes not found").with_status(StatusCode::NOT_FOUND)
+        }
+    }
 }
 
 pub async fn add_module(
     redis: web::Data<Addr<RedisActor>>,
     path: web::Path<(String, String, String)>,
-) -> Result<HttpResponse, AWError> {
+) -> Result<impl Responder, AWError> {
     let (hashes_id, blob_name, blob_id) = path.into_inner();
 
     let mut hashes: Hashes = match redis_helper::get_slice(&hashes_id, "tree", &redis).await {
         Some(t) => serde_json::from_slice(&t).expect("Hashes are Serializable"),
         None => {
             log::debug!("hashes not found");
-            return Ok(HttpResponse::NotFound().finish());
+            let result = json!({"status":"error", "mes":"hashes(tree) not found"});
+            return Ok(web::Json(result).with_status(StatusCode::NOT_FOUND));
         }
     };
 
@@ -38,11 +46,14 @@ pub async fn add_module(
         Ok(RespValue::Integer(x)) if x == 1 => (),
         Ok(RespValue::Integer(x)) if x == 0 => {
             log::debug!("module:{} did not exist", &blob_id);
-            return Ok(HttpResponse::NotFound().finish());
+            return Ok(web::Json(json!("module not found")).with_status(StatusCode::NOT_FOUND));
         }
         _ => {
             log::error!("error looking up module:{}", &blob_id);
-            return Ok(HttpResponse::InternalServerError().finish());
+            return Ok(
+                web::Json(json!({"status":"error","mes":"error looking up module"}))
+                    .with_status(StatusCode::INTERNAL_SERVER_ERROR),
+            );
         }
     }
 
@@ -52,18 +63,19 @@ pub async fn add_module(
 
     if prev_id == &hashes.id() {
         let result = json!({"status":"ok", "id":&prev_id, "mes":"no change in hash id"});
-        return Ok(HttpResponse::Ok().json(result));
+        return Ok(web::Json(result).with_status(StatusCode::OK));
     }
 
     match redis_helper::add(&hashes, &redis).await {
         true => {
             // tree will be updated
             let result = json!({"status":"ok", "id":&hashes.id()});
-            Ok(HttpResponse::Ok().json(result))
+            Ok(web::Json(result).with_status(StatusCode::OK))
         }
         false => {
             log::error!("failed to add updated tree");
-            Ok(HttpResponse::InternalServerError().finish())
+            let result = json!({"status":"error", "mes":"failed to add updated tree"});
+            Ok(web::Json(result).with_status(StatusCode::INTERNAL_SERVER_ERROR))
         }
     }
 }
@@ -72,15 +84,12 @@ pub async fn add_modules(
     redis: web::Data<Addr<RedisActor>>,
     tree_id: web::Path<String>,
     other: web::Json<Tree>,
-) -> Result<HttpResponse, AWError> {
+) -> impl Responder {
     let tree_id = tree_id.into_inner();
 
     let mut tree: Tree = match redis_helper::get_slice(&tree_id, "tree", &redis).await {
         Some(t) => serde_json::from_slice(&t).expect("Tree is Serializable"),
-        None => {
-            log::debug!("tree:{} not found", &tree_id);
-            return Ok(HttpResponse::NotFound().finish());
-        }
+        None => return json_error("tree not found").with_status(StatusCode::NOT_FOUND),
     };
 
     let other = other.into_inner();
@@ -94,71 +103,68 @@ pub async fn add_modules(
         Ok(Ok(RespValue::Integer(x))) if x == &1 => false,
         _ => true,
     }) {
-        log::debug!("some blob id did not exist");
-        return Ok(HttpResponse::NotFound().finish());
+        return json_error("blob did not exist").with_status(StatusCode::NOT_FOUND);
     }
 
     let prev_id = &tree.id();
     tree.assign(&other);
-    
+
     // we avoid going to db if there is no change
     if prev_id == &tree.id() {
         let result = json!({"status":"ok", "id":&prev_id, "mes":"no change in hash id"});
-        return Ok(HttpResponse::Ok().json(result));
+        return web::Json(result).with_status(StatusCode::OK);
     }
 
     match redis_helper::add(&tree, &redis).await {
         true => {
             // tree will be updated
             let result = json!({"status":"ok", "id":&tree.id()});
-            Ok(HttpResponse::Ok().json(result))
+            web::Json(result).with_status(StatusCode::OK)
         }
         false => {
-            log::error!("failed to add updated tree");
-            Ok(HttpResponse::InternalServerError().finish())
+            json_error("failed to add updated tree").with_status(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }
 }
 
+#[delete("api/hashes/{id}/{blob_name}/")]
 pub async fn remove_module(
     redis: web::Data<Addr<RedisActor>>,
     path: web::Path<(String, String)>,
-) -> Result<HttpResponse, AWError> {
+) -> impl Responder {
     let (tree_id, blob_name) = path.into_inner();
 
     let mut tree: Tree = match redis_helper::get_slice(&tree_id, "tree", &redis).await {
         Some(t) => serde_json::from_slice(&t).expect("Tree is Serializable"),
         None => {
-            log::debug!("tree:{} not found", &tree_id);
-            return Ok(HttpResponse::NotFound().finish());
+            return json_error("tree not found").with_status(StatusCode::NOT_FOUND);
         }
     };
 
     match tree.remove(&blob_name) {
         None => {
             let result = json!({"status":"ok", "id":&tree.id(), "mes":"no change in hash id"});
-            return Ok(HttpResponse::Ok().json(result));
+            return web::Json(result).with_status(StatusCode::OK);
         }
         Some(_x) => {
             match redis_helper::add(&tree, &redis).await {
                 true => {
                     // tree will be updated
                     let result = json!({"status":"ok", "id":&tree.id()});
-                    Ok(HttpResponse::Ok().json(result))
+                    web::Json(result).with_status(StatusCode::OK)
                 }
                 false => {
                     log::error!("failed to add updated tree");
-                    Ok(HttpResponse::InternalServerError().finish())
+                    json_error("failed to add updated tree")
+                        .with_status(StatusCode::INTERNAL_SERVER_ERROR)
                 }
             }
         }
     }
 }
 
-pub async fn post(
-    redis: web::Data<Addr<RedisActor>>,
-    payload: web::Json<Tree>,
-) -> Result<HttpResponse, AWError> {
+#[post("api/hashes/")]
+pub async fn post(redis: web::Data<Addr<RedisActor>>, payload: web::Json<Tree>) -> impl Responder {
     let b: Tree = payload.into_inner();
 
     // check if every blob exist
@@ -176,8 +182,14 @@ pub async fn post(
         })
         .any(|b| b)
     {
-        return Ok(HttpResponse::NoContent().body("some blob does not exist"));
+        return json_error("blob does not exist").with_status(StatusCode::NO_CONTENT);
     }
 
-    redis_helper::post(&redis, &b).await
+    match redis_helper::add(&b, &redis).await {
+        true => {
+            let result = json!({"status":"ok", "id":&b.id()});
+            web::Json(result).with_status(StatusCode::OK)
+        }
+        false => json_error("failed to update tree").with_status(StatusCode::INTERNAL_SERVER_ERROR),
+    }
 }

@@ -1,8 +1,10 @@
 use crate::model::{get_redis, set_redis, Hashes, Meta, Module, Table};
-use crate::redis_helper;
+use crate::{json_error, redis_helper};
 use actix::prelude::*;
 use actix_redis::{Command, RedisActor};
-use actix_web::{web, Error as AWError, HttpResponse};
+use actix_web::{
+    delete, get, http::StatusCode, post, web, Error as AWError, HttpResponse, Responder,
+};
 use futures::future::{join, join_all};
 use jct::{Blob, Commit, Settable, Tag};
 use redis_async::{resp::RespValue, resp_array};
@@ -10,22 +12,35 @@ use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::mem::swap;
 
-pub async fn get_raw(
-    redis: web::Data<Addr<RedisActor>>,
-    name: web::Path<String>,
-) -> Result<HttpResponse, AWError> {
-    let name = name.into_inner();
-    redis_helper::get(&redis, &name, "tag").await
-}
-
-pub async fn list(redis: web::Data<Addr<RedisActor>>) -> HttpResponse {
+#[get("api/tables/list/")]
+pub async fn list(redis: web::Data<Addr<RedisActor>>) -> impl Responder {
     match redis_helper::get_list("tags", &redis).await {
-        None => HttpResponse::InternalServerError().finish(),
-        Some(list) => HttpResponse::Ok().json(list),
+        None => json_error(
+            "could not get
+        list",
+        )
+        .with_status(StatusCode::INTERNAL_SERVER_ERROR),
+        Some(list) => web::Json(json!(list)).with_status(StatusCode::OK),
     }
 }
 
-pub async fn delete(redis: web::Data<Addr<RedisActor>>, name: web::Path<String>) -> HttpResponse {
+#[get("api/tables/raw/{name}/")]
+pub async fn get_raw(
+    redis: web::Data<Addr<RedisActor>>,
+    name: web::Path<String>,
+) -> impl Responder {
+    let name = name.into_inner();
+    match redis_helper::get_slice(&name, "tag", &redis).await {
+        Some(t) => {
+            let table_raw: Value = serde_json::from_slice(&t).unwrap();
+            web::Json(table_raw).with_status(StatusCode::OK)
+        },
+        None => json_error("could not find raw table data").with_status(StatusCode::NOT_FOUND)
+    }
+}
+
+#[delete("api/table/module/{name}/")]
+pub async fn delete(redis: web::Data<Addr<RedisActor>>, name: web::Path<String>) -> impl Responder {
     let name = name.into_inner();
 
     let tag_domain = format!("tag:{}", name);
@@ -37,20 +52,17 @@ pub async fn delete(redis: web::Data<Addr<RedisActor>>, name: web::Path<String>)
 
     match del {
         Ok(Ok(RespValue::Integer(x))) => {
-            if x == 1 {
-                HttpResponse::Ok().body("ok")
-            } else {
-                HttpResponse::Ok().body("no change")
-            }
+            web::Json(json!({"status":"ok"})).with_status(StatusCode::OK)
         }
-        _ => HttpResponse::InternalServerError().finish(),
+        _ => json_error("failed to delte module").with_status(StatusCode::INTERNAL_SERVER_ERROR),
     }
 }
 
+#[delete("api/table/module/{table_name}/{module_name}/")]
 pub async fn delete_module(
     redis: web::Data<Addr<RedisActor>>,
     path: web::Path<(String, String)>,
-) -> HttpResponse {
+) -> impl Responder {
     let (name, module_name) = path.into_inner();
 
     let (_, mut commit, mut hashes) = match table_commit_hashes(&name, &redis).await {
@@ -73,24 +85,34 @@ pub async fn delete_module(
     }
 }
 
+#[post("api/table/raw/{table_name}/{commit_id}/")]
 pub async fn post_raw(
     redis: web::Data<Addr<RedisActor>>,
     path: web::Path<(String, String)>,
-) -> Result<HttpResponse, AWError> {
+) -> impl Responder {
     let (name, commit_id) = path.into_inner();
 
     let commit: Commit = match redis_helper::get_slice(&commit_id, "commit", &redis).await {
         Some(s) => serde_json::from_slice(&s).expect("Commit has Deserialize"),
         None => {
-            log::debug!("could not find commit:{}", &commit_id);
-            return Ok(HttpResponse::NotFound().finish());
+            return json_error("could not find commit").with_status(StatusCode::INTERNAL_SERVER_ERROR)
         }
     };
 
     let t = Tag::new(&name, &commit.id());
-    redis_helper::post(&redis, &t).await
+    match redis_helper::add(&t, &redis).await {
+        true => {
+            let result = json!({"status":"ok"});
+            web::Json(result).with_status(StatusCode::OK)
+        },
+        false => {
+            json_error("could not assign new commit id to table_name(tag)").with_status(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+
 }
 
+#[get("api/table/{name}/")]
 pub async fn get(
     redis: web::Data<Addr<RedisActor>>,
     name: web::Path<String>,
@@ -103,6 +125,7 @@ pub async fn get(
     }
 }
 
+#[get("api/table/{table_name}/{tail:.*}")]
 pub async fn deep_get(
     redis: web::Data<Addr<RedisActor>>,
     path: web::Path<(String, String)>,
@@ -138,6 +161,7 @@ pub async fn deep_get(
     Ok(HttpResponse::Ok().json(value))
 }
 
+#[post("api/table/{name}/")]
 pub async fn post(
     redis: web::Data<Addr<RedisActor>>,
     name: web::Path<String>,
@@ -212,6 +236,7 @@ pub async fn post(
     }
 }
 
+#[post("api/table/{table_name}/{tail:.*}")]
 pub async fn deep_post(
     redis: web::Data<Addr<RedisActor>>,
     path: web::Path<(String, String)>,
@@ -308,11 +333,11 @@ pub async fn deep_post(
     }
 }
 
+#[delete("api/table/{table_name}/{tail:.*}")]
 pub async fn deep_delete(
     redis: web::Data<Addr<RedisActor>>,
     path: web::Path<(String, String)>,
 ) -> Result<HttpResponse, AWError> {
-
     let (table_name, tail) = path.into_inner();
 
     let (_, mut commit, mut hashes) = match table_commit_hashes(&table_name, &redis).await {
@@ -343,48 +368,47 @@ pub async fn deep_delete(
     if dirs.len() == 0 {
         // wants to delete the module
         match hashes.remove(&module_name) {
-            Some(_v) => {
-                () 
-            },
+            Some(_v) => (),
             None => {
-                return Ok(HttpResponse::Ok().json(json!({"status":"ok", "mes":"module not found, state did not change."})))  
+                return Ok(HttpResponse::Ok()
+                    .json(json!({"status":"ok", "mes":"module not found, state did not change."})))
             }
         }
     } else {
         // deeper
-    let module_id = match hashes.get(&module_name) {
+        let module_id = match hashes.get(&module_name) {
         Some(v) => v,
         None => {
             return Ok(HttpResponse::Ok().json(json!({"status":"ok", "mes":"did not find module name, table state did not change."})))  
         }
     };
 
-    let mut module: Module = match get_redis(&module_id, "blob", &redis).await {
-        Some(v) => v,
-        None => return Ok(HttpResponse::NotFound().finish()),
-    };
-
-    let mut partial = &mut module;
-
-    for dir in dirs {
-        partial = match partial.get_mut(dir) {
+        let mut module: Module = match get_redis(&module_id, "blob", &redis).await {
             Some(v) => v,
             None => return Ok(HttpResponse::NotFound().finish()),
+        };
+
+        let mut partial = &mut module;
+
+        for dir in dirs {
+            partial = match partial.get_mut(dir) {
+                Some(v) => v,
+                None => return Ok(HttpResponse::NotFound().finish()),
+            }
         }
-    }
 
-    swap(partial, &mut Value::Null);
+        swap(partial, &mut Value::Null);
 
-    if &module.id() == module_id {
-        let json = serde_json::json!({
-            "status":"ok",
-            "mes": "no change on table"
-        });
-        return Ok(HttpResponse::Ok().json(json));
-    }
+        if &module.id() == module_id {
+            let json = serde_json::json!({
+                "status":"ok",
+                "mes": "no change on table"
+            });
+            return Ok(HttpResponse::Ok().json(json));
+        }
 
-    hashes.insert(module_name, module.id());
-    let _add_module = set_redis(module, &redis).await;
+        hashes.insert(module_name, module.id());
+        let _add_module = set_redis(module, &redis).await;
     }
 
     commit.update_tree(&hashes.id());
@@ -397,9 +421,7 @@ pub async fn deep_delete(
         log::debug!("failed updating");
         Ok(HttpResponse::InternalServerError().finish())
     }
-
 }
-
 
 async fn update(
     hashes: Hashes,

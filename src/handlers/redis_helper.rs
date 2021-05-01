@@ -1,43 +1,9 @@
 use jct::Settable;
 use actix::Addr;
 use actix_redis::{Command, RedisActor, RespValue as Value};
-use actix_web::{web, Error as AWError, HttpResponse};
+use actix_web::web;
 use futures::future::{join, join_all};
 use redis_async::resp_array;
-use serde_json::json;
-
-pub async fn get(
-    redis: &web::Data<Addr<RedisActor>>,
-    id: &str,
-    prefix: &str,
-) -> Result<HttpResponse, AWError> {
-    match get_slice(&id, prefix, &redis).await {
-        Some(s) => {
-            Ok(HttpResponse::Ok().content_type("application/json").body(s))
-        },
-        None => Ok(HttpResponse::NoContent().body("blob not found"))
-    }
-}
-
-pub async fn post(
-    redis: &web::Data<Addr<RedisActor>>,
-    payload: &impl Settable,
-) -> Result<HttpResponse, AWError> {
-    match add(payload, redis).await {
-        true => {
-            let result = json!({
-                "status":"ok",
-                "id": payload.id(),
-            });
-            Ok(HttpResponse::Ok().json(result))
-        },
-        false => {
-            Ok(HttpResponse::InternalServerError()
-                .body("error adding Settable object"))
-        }
-    }
-}
-
 
 // TODO this is obscuring the error, not best practice
 pub async fn add(obj: &impl Settable, redis: &web::Data<Addr<RedisActor>>) -> bool {

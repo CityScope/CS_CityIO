@@ -1,20 +1,17 @@
-pub mod module;
 pub mod commit;
-pub mod table;
 pub mod hashes;
+pub mod module;
 pub mod redis_helper;
-
+pub mod table;
 use jct::{Blob, Commit, Tag, Tree};
-
 use actix::Addr;
 use actix_redis::{Command, RedisActor};
-use actix_web::{web, Error as AWError, HttpResponse, http::StatusCode, http::header, get};
+use actix_web::{delete, get, http::header, http::StatusCode, post, web, HttpResponse, Responder};
 use futures::future::{join, join_all};
 use redis_async::{resp::RespValue, resp_array};
-use serde_json::Value;
 use serde::Deserialize;
+use serde_json::Value;
 use std::collections::BTreeMap;
-
 
 const CITY_SCOPE_URL: &str = "https://cityscope.media.mit.edu/CS_cityscopeJS/#/cityioviewer";
 
@@ -25,7 +22,8 @@ pub async fn index() -> HttpResponse {
         .finish()
 }
 
-pub async fn dump(redis: web::Data<Addr<RedisActor>>) -> Result<HttpResponse, AWError> {
+#[get("api/dump/")]
+pub async fn dump(redis: web::Data<Addr<RedisActor>>) -> impl Responder {
     let mut dump: BTreeMap<String, Vec<Value>> = BTreeMap::new();
 
     let elements = vec!["blob", "tree", "commit", "tag"];
@@ -63,7 +61,7 @@ pub async fn dump(redis: web::Data<Addr<RedisActor>>) -> Result<HttpResponse, AW
             _ => (),
         };
     }
-    Ok(HttpResponse::Ok().json(dump))
+    web::Json(dump)
 }
 
 #[derive(Debug, Deserialize)]
@@ -74,19 +72,25 @@ pub struct Dump {
     tag: Vec<Tag>,
 }
 
+#[post("api/restore/")]
 pub async fn restore(
     redis: web::Data<Addr<RedisActor>>,
-    dump: web::Json<Dump>,
-) -> Result<HttpResponse, AWError> {
-    let dump = dump.into_inner();
+    dump_json: web::Json<Dump>,
+) -> impl Responder {
+    let dump_json: Dump = dump_json.into_inner();
 
-    let add_blobs = join_all(dump.blob.iter().map(|b| redis_helper::add(b, &redis)));
+    let add_blobs = join_all(dump_json.blob.iter().map(|b| redis_helper::add(b, &redis)));
 
-    let add_trees = join_all(dump.tree.iter().map(|t| redis_helper::add(t, &redis)));
+    let add_trees = join_all(dump_json.tree.iter().map(|t| redis_helper::add(t, &redis)));
 
-    let add_commits = join_all(dump.commit.iter().map(|c| redis_helper::add(c, &redis)));
+    let add_commits = join_all(
+        dump_json
+            .commit
+            .iter()
+            .map(|c| redis_helper::add(c, &redis)),
+    );
 
-    let add_tags = join_all(dump.tag.iter().map(|t| redis_helper::add(t, &redis)));
+    let add_tags = join_all(dump_json.tag.iter().map(|t| redis_helper::add(t, &redis)));
 
     let ((mut blobs, trees), (commits, tags)) =
         join(join(add_blobs, add_trees), join(add_commits, add_tags)).await;
@@ -96,12 +100,13 @@ pub async fn restore(
     blobs.extend(tags);
 
     match blobs.iter().any(|b| !b) {
-        true => Ok(HttpResponse::Ok().body("something went wrong")),
-        false => Ok(HttpResponse::Ok().body("ok")),
+        true => "something went wrong",
+        false => "ok",
     }
 }
 
-pub async fn nuclear(redis: web::Data<Addr<RedisActor>>) -> Result<HttpResponse, AWError> {
+#[delete("/api/nuclear/")]
+pub async fn nuclear(redis: web::Data<Addr<RedisActor>>) -> impl Responder {
     // gets all the data using the list
     let mut domain_list: Vec<String> = Vec::new();
 
@@ -141,7 +146,12 @@ pub async fn nuclear(redis: web::Data<Addr<RedisActor>>) -> Result<HttpResponse,
         }
         flag
     }) {
-        true => Ok(HttpResponse::Ok().body("ok")),
-        false => Ok(HttpResponse::InternalServerError().finish()),
+        true => "ok".with_status(StatusCode::OK),
+        false => "ok".with_status(StatusCode::INTERNAL_SERVER_ERROR),
     }
 }
+
+pub fn json_error(mes: &str) -> web::Json<Value> {
+    web::Json(serde_json::json!({"status":"error", "mes":mes.to_string()}))
+}
+
